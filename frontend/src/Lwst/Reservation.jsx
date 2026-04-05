@@ -3,7 +3,7 @@ import LoginPrompt from './LoginPrompt';
 import * as reservationService from '../services/reservationService';
 import './reservations.css'; // Importer le nouveau fichier CSS
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 function Reservation({ user }) {
     const [reservations, setReservations] = useState([]);

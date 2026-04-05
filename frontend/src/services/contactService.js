@@ -2,7 +2,7 @@
  * Service pour gérer les messages de contact
  */
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 /**
  * Envoie un nouveau message de contact

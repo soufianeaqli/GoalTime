@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Instance API principale
 const api = axios.create({
-    baseURL: `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}/api`,
+    baseURL: `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api`,
     withCredentials: true,
     headers: {
         'Accept': 'application/json',
@@ -14,7 +14,7 @@ const api = axios.create({
 // Fonction pour obtenir le CSRF token
 const getCsrfToken = async () => {
     try {
-        await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}/sanctum/csrf-cookie`, {
+        await axios.get(`${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/sanctum/csrf-cookie`, {
             withCredentials: true
         });
         const token = document.cookie
