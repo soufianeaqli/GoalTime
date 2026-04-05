@@ -11,7 +11,7 @@ import Login from './Lwst/Login';
 import LoginPrompt from './Lwst/LoginPrompt';
 import TournoiDetail from './Lwst/TournoiDetail';
 import Parametres from './Lwst/Parametres';
-import "./lwst/lwst.css";
+import "./Lwst/lwst.css";
 import * as reservationService from "./services/reservationService";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
