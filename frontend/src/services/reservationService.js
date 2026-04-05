@@ -1,5 +1,7 @@
 import * as directReservationService from './directReservationService';
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+
 // Récupérer toutes les réservations
 export const getAllReservations = async () => {
     return directReservationService.getAllReservations();
@@ -30,7 +32,7 @@ export const updateReservation = async (id, reservationData) => {
         };
 
         // Utiliser le script PHP direct sans CSRF
-        const response = await fetch(`http://127.0.0.1:8000/direct-update-reservation.php?id=${id}`, {
+        const response = await fetch(`${BASE_URL}/direct-update-reservation.php?id=${id}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

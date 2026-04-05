@@ -5,6 +5,8 @@ import api from '../services/api';
 import * as reservationService from '../services/reservationService';
 import './terrain.css';
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+
 function Terrain({ addReservation, reservations, user }) {
     const [terrains, setTerrains] = useState([]);
     const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
@@ -34,7 +36,7 @@ function Terrain({ addReservation, reservations, user }) {
         const fetchTerrains = async () => {
             try {
                 // Utiliser le script PHP direct sans CSRF
-                const response = await fetch('http://127.0.0.1:8000/direct-get-terrains.php', {
+                const response = await fetch('${BASE_URL}/direct-get-terrains.php', {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json'
@@ -117,7 +119,7 @@ function Terrain({ addReservation, reservations, user }) {
             const formData = new FormData();
             formData.append('image', file);
 
-            const response = await fetch('http://127.0.0.1:8000/direct-upload.php', {
+            const response = await fetch('${BASE_URL}/direct-upload.php', {
                 method: 'POST',
                 body: formData
             });
@@ -167,7 +169,7 @@ function Terrain({ addReservation, reservations, user }) {
             console.log('Données à envoyer:', terrainData);
 
             // Utiliser le script PHP direct sans CSRF
-            const response = await fetch('http://127.0.0.1:8000/direct-add.php', {
+            const response = await fetch('${BASE_URL}/direct-add.php', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -220,7 +222,7 @@ function Terrain({ addReservation, reservations, user }) {
             console.log('Suppression du terrain via script direct:', terrainToDelete);
             
             // Utiliser le script PHP direct sans CSRF
-            const response = await fetch(`http://127.0.0.1:8000/direct-delete.php?id=${terrainToDelete}`, {
+            const response = await fetch(`${BASE_URL}/direct-delete.php?id=${terrainToDelete}`, {
                 method: 'GET'
             });
 
@@ -314,7 +316,7 @@ function Terrain({ addReservation, reservations, user }) {
         if (!imageUrl) return '/placeholder.jpg';
         
         if (imageUrl.startsWith('/storage')) {
-            return `http://127.0.0.1:8000${imageUrl}`;
+            return `${BASE_URL}${imageUrl}`;
         }
         
         return imageUrl;

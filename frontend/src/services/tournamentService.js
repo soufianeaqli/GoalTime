@@ -1,8 +1,9 @@
-const API_URL = 'http://127.0.0.1:8000/api';
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = `${API_URL}/api`;
 
 const getCSRFToken = async () => {
     try {
-        await fetch('http://127.0.0.1:8000/sanctum/csrf-cookie', {
+        await fetch('${API_URL}/sanctum/csrf-cookie', {
             credentials: 'include'
         });
     } catch (error) {
@@ -54,7 +55,7 @@ export const createTournament = async (tournamentData) => {
         const jsonData = encodeURIComponent(JSON.stringify(tournamentData));
         
         // Utiliser la route sans CSRF avec méthode GET
-        const response = await fetch(`http://127.0.0.1:8000/api/no-csrf/add-tournament?data=${jsonData}`, {
+        const response = await fetch(`${API_URL}/api/no-csrf/add-tournament?data=${jsonData}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -78,7 +79,7 @@ export const updateTournament = async (id, tournamentData) => {
         const jsonData = encodeURIComponent(JSON.stringify(tournamentData));
         
         // Utiliser la route sans CSRF avec méthode GET
-        const response = await fetch(`http://127.0.0.1:8000/api/no-csrf/update-tournament/${id}?data=${jsonData}`, {
+        const response = await fetch(`${API_URL}/api/no-csrf/update-tournament/${id}?data=${jsonData}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -98,7 +99,7 @@ export const updateTournament = async (id, tournamentData) => {
 
 export const deleteTournament = async (id) => {
     try {
-        const response = await fetch(`http://127.0.0.1:8000/api/no-csrf/delete-tournament/${id}`, {
+        const response = await fetch(`${API_URL}/api/no-csrf/delete-tournament/${id}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -140,7 +141,7 @@ export const registerTeam = async (tournamentId, teamData) => {
         console.log('Sending registration data:', teamData, 'for tournament:', tournamentId);
         
         // Utiliser la route sans CSRF avec méthode GET
-        const response = await fetch(`http://127.0.0.1:8000/api/no-csrf/register-team-tournament/${tournamentId}?data=${jsonData}`, {
+        const response = await fetch(`${API_URL}/api/no-csrf/register-team-tournament/${tournamentId}?data=${jsonData}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -164,7 +165,7 @@ export const registerTeam = async (tournamentId, teamData) => {
 
 export const unregisterTeam = async (tournamentId, teamId = null) => {
     try {
-        let url = `http://127.0.0.1:8000/api/no-csrf/unregister-team-tournament/${tournamentId}?`;
+        let url = `${API_URL}/api/no-csrf/unregister-team-tournament/${tournamentId}?`;
         
         // Si nous avons un ID d'équipe, l'utiliser en priorité
         if (teamId) {

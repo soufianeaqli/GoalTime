@@ -2,6 +2,8 @@
  * Service pour gérer l'authentification
  */
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+
 /**
  * Connecte un utilisateur
  * @param {Object} credentials - Les identifiants de l'utilisateur
@@ -16,7 +18,7 @@ export const login = async (credentials) => {
         const jsonData = encodeURIComponent(JSON.stringify(credentials));
         
         // Utiliser le script PHP direct sans CSRF
-        const response = await fetch(`http://127.0.0.1:8000/direct-auth.php?action=login&data=${jsonData}`, {
+        const response = await fetch(`${BASE_URL}/direct-auth.php?action=login&data=${jsonData}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -76,7 +78,7 @@ export const register = async (userData) => {
         const jsonData = encodeURIComponent(JSON.stringify(userData));
         
         // Utiliser le script PHP direct sans CSRF
-        const response = await fetch(`http://127.0.0.1:8000/direct-auth.php?action=register&data=${jsonData}`, {
+        const response = await fetch(`${BASE_URL}/direct-auth.php?action=register&data=${jsonData}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -125,7 +127,7 @@ export const checkUsernameAvailable = async (username) => {
         console.log('Vérification de la disponibilité du nom d\'utilisateur:', username);
         
         // Utiliser le script PHP direct sans CSRF
-        const response = await fetch(`http://127.0.0.1:8000/direct-auth.php?action=check-username&username=${encodeURIComponent(username)}`, {
+        const response = await fetch(`${BASE_URL}/direct-auth.php?action=check-username&username=${encodeURIComponent(username)}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'

@@ -2,6 +2,8 @@
  * Service pour gérer les messages de contact
  */
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+
 /**
  * Envoie un nouveau message de contact
  * @param {Object} contactData - Les données du message de contact
@@ -45,7 +47,7 @@ export const getContactMessages = async () => {
         console.log('Récupération des messages de contact');
         
         // Utiliser le script PHP direct sans CSRF
-        const response = await fetch('http://127.0.0.1:8000/direct-contact.php?action=get', {
+        const response = await fetch(`${BASE_URL}/direct-contact.php?action=get`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'

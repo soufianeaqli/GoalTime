@@ -4,6 +4,8 @@ import LoginPrompt from './LoginPrompt';
 import * as reservationService from '../services/reservationService';
 import './terrain.css';
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+
 function TerrainDetail({ addReservation, reservations, user, terrains }) {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -27,7 +29,7 @@ function TerrainDetail({ addReservation, reservations, user, terrains }) {
         const fetchTerrainById = async () => {
             try {
                 // Utiliser le script PHP direct sans CSRF
-                const response = await fetch(`http://127.0.0.1:8000/direct-get-terrain.php?id=${id}`, {
+                const response = await fetch(`${BASE_URL}/direct-get-terrain.php?id=${id}`, {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json'
@@ -201,7 +203,7 @@ function TerrainDetail({ addReservation, reservations, user, terrains }) {
         
         // Pour les chemins commençant par /storage, ajouter le domaine du serveur
         if (imageUrl.startsWith('/storage')) {
-            return `http://127.0.0.1:8000${imageUrl}`;
+            return `${BASE_URL}${imageUrl}`;
         }
         
         return imageUrl;

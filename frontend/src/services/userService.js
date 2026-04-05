@@ -2,6 +2,8 @@
  * Service pour gérer les opérations liées au profil utilisateur
  */
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+
 /**
  * Met à jour le profil d'un utilisateur
  * @param {Object} userData - Les données du profil à mettre à jour
@@ -18,7 +20,7 @@ export const updateProfile = async (userData) => {
         const jsonData = encodeURIComponent(JSON.stringify(userData));
         
         // Utiliser le script PHP direct sans CSRF
-        const response = await fetch(`http://127.0.0.1:8000/direct-auth.php?action=update-profile&data=${jsonData}`, {
+        const response = await fetch(`${BASE_URL}/direct-auth.php?action=update-profile&data=${jsonData}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -71,7 +73,7 @@ export const updatePassword = async (passwordData) => {
         const jsonData = encodeURIComponent(JSON.stringify(passwordData));
         
         // Utiliser le script PHP direct sans CSRF
-        const response = await fetch(`http://127.0.0.1:8000/direct-auth.php?action=update-password&data=${jsonData}`, {
+        const response = await fetch(`${BASE_URL}/direct-auth.php?action=update-password&data=${jsonData}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
