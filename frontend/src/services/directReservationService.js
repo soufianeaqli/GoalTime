@@ -2,7 +2,7 @@
  * Service pour la gestion des réservations via les scripts PHP directs
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+import { BASE_URL } from './config';
 
 /**
  * Récupère toutes les réservations

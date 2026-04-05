@@ -4,7 +4,7 @@ import LoginPrompt from './LoginPrompt';
 import * as reservationService from '../services/reservationService';
 import './terrain.css';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+import { BASE_URL } from '../services/config';
 
 function TerrainDetail({ addReservation, reservations, user, terrains }) {
     const { id } = useParams();

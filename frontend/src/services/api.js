@@ -1,30 +1,32 @@
 import axios from 'axios';
+import { BASE_URL, API_BASE_URL } from './config';
 
 // Instance API principale
 const api = axios.create({
-    baseURL: `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api`,
+    baseURL: API_BASE_URL,
     withCredentials: true,
     headers: {
         'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
+        'Content-Type': 'application/json'
     }
 });
 
 // Fonction pour obtenir le CSRF token
 const getCsrfToken = async () => {
     try {
-        await axios.get(`${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/sanctum/csrf-cookie`, {
+        await axios.get(`${BASE_URL}/sanctum/csrf-cookie`, {
             withCredentials: true
         });
         const token = document.cookie
             .split('; ')
             .find(row => row.startsWith('XSRF-TOKEN='))
             ?.split('=')[1];
-        return token ? decodeURIComponent(token) : null;
+        
+        if (token) {
+            api.defaults.headers.common['X-XSRF-TOKEN'] = decodeURIComponent(token);
+        }
     } catch (error) {
-        console.error('Erreur lors de la récupération du CSRF token:', error);
-        return null;
+        console.error('Erreur lors de la récupération du token CSRF:', error);
     }
 };
 
