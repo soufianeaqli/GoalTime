@@ -21,7 +21,7 @@ const handleResponse = async (response) => {
 
 export const getAllTournaments = async () => {
     try {
-        const response = await fetch(`${API_URL}/tournaments`, {
+        const response = await fetch(`${API_BASE_URL}/tournaments`, {
             credentials: 'include',
             headers: {
                 'Accept': 'application/json'
@@ -36,7 +36,7 @@ export const getAllTournaments = async () => {
 
 export const getTournamentById = async (id) => {
     try {
-        const response = await fetch(`${API_URL}/tournaments/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/tournaments/${id}`, {
             credentials: 'include',
             headers: {
                 'Accept': 'application/json'

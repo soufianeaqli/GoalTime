@@ -9,45 +9,51 @@ function loadEnvVars() {
     $envFile = __DIR__ . '/../.env';
     $env = [];
     
-    if (!file_exists($envFile)) {
-        return $env;
+    // Définir les noms des variables essentielles que nous voulons récupérer du système si le .env n'existe pas
+    $essentialVars = [
+        'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD', 
+        'CORS_ALLOWED_ORIGINS', 'APP_URL', 'APP_ENV', 'APP_KEY'
+    ];
+    
+    // Charger d'abord les variables d'environnement système (utilisées par Railway)
+    foreach ($essentialVars as $var) {
+        $val = getenv($var);
+        if ($val !== false) {
+            $env[$var] = $val;
+        }
     }
     
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    
-    foreach ($lines as $line) {
-        // Ignorer les commentaires
-        if (strpos(trim($line), '#') === 0) {
-            continue;
-        }
+    // Si le fichier .env existe, il peut surcharger les variables système (utile pour le local)
+    if (file_exists($envFile)) {
+        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         
-        // Trouver les lignes qui contiennent une variable
-        if (strpos($line, '=') !== false) {
-            // Diviser la ligne au premier signe égal
-            list($name, $value) = explode('=', $line, 2);
+        foreach ($lines as $line) {
+            if (strpos(trim($line), '#') === 0) continue;
             
-            // Nettoyer les valeurs
-            $name = trim($name);
-            $value = trim($value);
-            
-            // Supprimer les guillemets des valeurs si présents
-            if (preg_match('/^"(.+)"$/', $value, $matches)) {
-                $value = $matches[1];
-            } elseif (preg_match("/^'(.+)'$/", $value, $matches)) {
-                $value = $matches[1];
-            }
-            
-            // Résoudre les références aux autres variables
-            if (preg_match('/\${(.+)}/', $value, $matches)) {
-                $varName = $matches[1];
-                if (isset($env[$varName])) {
-                    $value = str_replace('${' . $varName . '}', $env[$varName], $value);
+            if (strpos($line, '=') !== false) {
+                list($name, $value) = explode('=', $line, 2);
+                $name = trim($name);
+                $value = trim($value);
+                
+                if (preg_match('/^"(.+)"$/', $value, $matches)) {
+                    $value = $matches[1];
+                } elseif (preg_match("/^'(.+)'$/", $value, $matches)) {
+                    $value = $matches[1];
                 }
+                
+                if (preg_match('/\${(.+)}/', $value, $matches)) {
+                    $varName = $matches[1];
+                    if (isset($env[$varName])) {
+                        $value = str_replace('${' . $varName . '}', $env[$varName], $value);
+                    }
+                }
+                
+                $env[$name] = $value;
+                // Mettre aussi dans $_ENV pour la compatibilité
+                $_ENV[$name] = $value;
             }
-            
-            $env[$name] = $value;
         }
     }
     
     return $env;
-} 
+}

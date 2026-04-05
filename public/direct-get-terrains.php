@@ -31,23 +31,22 @@ try {
     // Journaliser la demande
     file_put_contents(__DIR__ . '/get-terrains-log.txt', date('Y-m-d H:i:s') . " - Request received\n", FILE_APPEND);
     
-    // Charger le fichier .env pour obtenir les informations de connexion à la base de données
-    $envFile = __DIR__ . '/../.env';
-    if (file_exists($envFile)) {
-        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        foreach ($lines as $line) {
-            if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
-                list($name, $value) = explode('=', $line, 2);
-                $_ENV[$name] = $value;
-            }
-        }
+    // Inclure la fonction de chargement des variables d'environnement
+    require_once __DIR__ . '/env-loader.php';
+    
+    // Charger les variables d'environnement
+    $env = loadEnvVars();
+    
+    // Vérifier si les variables essentielles sont présentes
+    if (empty($env['DB_HOST']) || empty($env['DB_DATABASE'])) {
+        throw new Exception('Impossible de charger les variables d\'environnement essentielles');
     }
 
     // Connexion à la base de données
-    $host = $_ENV['DB_HOST'] ?? 'localhost';
-    $dbname = $_ENV['DB_DATABASE'] ?? 'laravel';
-    $username = $_ENV['DB_USERNAME'] ?? 'root';
-    $password = $_ENV['DB_PASSWORD'] ?? '';
+    $host = $env['DB_HOST'];
+    $dbname = $env['DB_DATABASE'];
+    $username = $env['DB_USERNAME'] ?? 'root';
+    $password = $env['DB_PASSWORD'] ?? '';
     
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
