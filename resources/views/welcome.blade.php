@@ -54,12 +54,16 @@
             Cette application vous permet de réserver des terrains de football, 
             consulter les disponibilités et gérer vos réservations.
         </p>
-        <a href="http://localhost:3000" class="btn">Accéder à l'application</a>
+        <?php
+            $allowedOrigins = explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000'));
+            $frontendUrl = $allowedOrigins[0];
+        ?>
+        <a href="{{ $frontendUrl }}" class="btn">Accéder à l'application</a>
     </div>
 
     <script>
         // Redirection automatique vers l'application React
-        window.location.href = "http://localhost:3000";
+        window.location.href = "{{ $frontendUrl }}";
     </script>
 </body>
 </html> 
