@@ -17,7 +17,7 @@ export const sendContactMessage = async (contactData) => {
         const jsonData = encodeURIComponent(JSON.stringify(contactData));
         
         // Utiliser le script PHP direct sans CSRF
-        const response = await fetch(`http://127.0.0.1:8000/direct-contact.php?action=add&data=${jsonData}`, {
+        const response = await fetch(`${BASE_URL}/direct-contact.php?action=add&data=${jsonData}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -78,7 +78,7 @@ export const markContactMessageAsRead = async (id) => {
         console.log('Marquage du message comme lu:', id);
         
         // Utiliser le script PHP direct sans CSRF
-        const response = await fetch(`http://127.0.0.1:8000/direct-contact.php?action=mark-read&id=${id}`, {
+        const response = await fetch(`${BASE_URL}/direct-contact.php?action=mark-read&id=${id}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -109,7 +109,7 @@ export const deleteContactMessage = async (id) => {
         console.log('Suppression du message:', id);
         
         // Utiliser le script PHP direct sans CSRF
-        const response = await fetch(`http://127.0.0.1:8000/direct-contact.php?action=delete&id=${id}`, {
+        const response = await fetch(`${BASE_URL}/direct-contact.php?action=delete&id=${id}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
