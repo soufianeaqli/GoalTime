@@ -20,29 +20,38 @@ if (empty($env) || empty($env['DB_HOST']) || empty($env['DB_DATABASE']) || empty
 
 try {
     // Connexion à la base de données
-    $dsn = "mysql:host={$env['DB_HOST']};dbname={$env['DB_DATABASE']};charset=utf8mb4";
+    $host = $env['DB_HOST'] ?? '127.0.0.1';
+    $port = $env['DB_PORT'] ?? '3306';
+    $dbname = $env['DB_DATABASE'] ?? 'laravel';
+    $username = $env['DB_USERNAME'] ?? 'root';
+    $password = $env['DB_PASSWORD'] ?? '';
+    
+    $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
     $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
     ];
-    $pdo = new PDO($dsn, $env['DB_USERNAME'], $env['DB_PASSWORD'], $options);
+    $pdo = new PDO($dsn, $username, $password, $options);
 
-    // Obtenir la structure de la table réservations
-    $stmt = $pdo->prepare("DESCRIBE reservations");
+    // Obtenir la structure de la table tournaments
+    $stmt = $pdo->prepare("DESCRIBE tournaments");
     $stmt->execute();
     $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    header('Content-Type: application/json');
     echo json_encode([
         'success' => true,
-        'message' => 'Structure de la table reservations',
+        'message' => 'Structure de la table tournaments',
         'columns' => $columns
     ]);
 
 } catch (PDOException $e) {
     http_response_code(500);
+    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Erreur de base de données: ' . $e->getMessage()]);
 } catch (Exception $e) {
     http_response_code(500);
+    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Erreur serveur: ' . $e->getMessage()]);
 } 
