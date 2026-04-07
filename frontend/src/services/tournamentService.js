@@ -20,13 +20,18 @@ const handleResponse = async (response) => {
 
 export const getAllTournaments = async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/tournaments`, {
-            credentials: 'include',
+        const response = await fetch(`${BASE_URL}/direct-get-tournaments.php`, {
             headers: {
                 'Accept': 'application/json'
             }
         });
-        return await handleResponse(response);
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || 'Erreur lors du chargement des tournois');
+        }
+        
+        return await response.json();
     } catch (error) {
         console.error('Error fetching tournaments:', error);
         throw error;
@@ -35,13 +40,18 @@ export const getAllTournaments = async () => {
 
 export const getTournamentById = async (id) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/tournaments/${id}`, {
-            credentials: 'include',
+        const response = await fetch(`${BASE_URL}/direct-get-tournament.php?id=${id}`, {
             headers: {
                 'Accept': 'application/json'
             }
         });
-        return await handleResponse(response);
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || 'Erreur lors du chargement du tournoi');
+        }
+        
+        return await response.json();
     } catch (error) {
         console.error('Error fetching tournament:', error);
         throw error;

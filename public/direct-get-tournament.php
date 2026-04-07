@@ -1,6 +1,6 @@
 <?php
 /**
- * Script direct pour récupérer un terrain spécifique par son ID sans protection CSRF
+ * Script direct pour récupérer un tournoi spécifique par son ID sans protection CSRF
  * Ce script ne passe pas par le framework Laravel mais se connecte directement à la base de données
  */
 
@@ -24,11 +24,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     http_response_code(400);
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'ID de terrain non valide']);
+    echo json_encode(['success' => false, 'message' => 'ID de tournoi non valide']);
     exit;
 }
 
-$terrainId = (int)$_GET['id'];
+$tournoiId = (int)$_GET['id'];
 
 try {
     // Inclure la fonction de chargement des variables d'environnement
@@ -52,36 +52,42 @@ try {
     ];
     $pdo = new PDO($dsn, $username, $password, $options);
     
-    // Récupérer le terrain spécifique
-    $stmt = $pdo->prepare("SELECT * FROM terrains WHERE id = ?");
-    $stmt->execute([$terrainId]);
-    $terrain = $stmt->fetch();
+    // Récupérer le tournoi spécifique
+    $stmt = $pdo->prepare("SELECT * FROM tournaments WHERE id = ?");
+    $stmt->execute([$tournoiId]);
+    $tournament = $stmt->fetch();
     
-    if (!$terrain) {
+    if (!$tournament) {
         http_response_code(404);
         header('Content-Type: application/json');
-        echo json_encode([
-            'success' => false,
-            'message' => 'Terrain non trouvé'
-        ]);
+        echo json_encode(['success' => false, 'message' => 'Tournoi non trouvé']);
         exit;
     }
     
-    // Convertir les valeurs numériques
-    $terrain['id'] = (int)$terrain['id'];
-    $terrain['prix'] = (float)$terrain['prix'];
+    // Traiter les données (décodage JSON pour teams et conversion types)
+    $tournament['id'] = (int)$tournament['id'];
+    $tournament['max_teams'] = (int)$tournament['max_teams'];
+    $tournament['registered_teams'] = (int)$tournament['registered_teams'];
     
-    // Renvoyer le terrain
+    // Décoder le champ JSON 'teams'
+    if (!empty($tournament['teams'])) {
+        $decodedTeams = json_decode($tournament['teams'], true);
+        $tournament['teams'] = is_array($decodedTeams) ? $decodedTeams : [];
+    } else {
+        $tournament['teams'] = [];
+    }
+    
+    // Renvoyer le tournoi
     header('Content-Type: application/json');
-    echo json_encode($terrain);
+    echo json_encode($tournament);
     
 } catch (PDOException $e) {
-    error_log("Erreur PDO lors de la récupération du terrain: " . $e->getMessage());
+    error_log("Erreur PDO lors de la récupération du tournoi: " . $e->getMessage());
     http_response_code(500);
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Erreur de base de données: ' . $e->getMessage()]);
 } catch (Exception $e) {
-    error_log("Erreur lors de la récupération du terrain: " . $e->getMessage());
+    error_log("Erreur lors de la récupération du tournoi: " . $e->getMessage());
     http_response_code(500);
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Erreur serveur: ' . $e->getMessage()]);
