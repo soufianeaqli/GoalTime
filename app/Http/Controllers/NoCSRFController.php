@@ -226,6 +226,7 @@ class NoCSRFController extends Controller
                 'description' => 'required|string',
                 'format' => 'required|string',
                 'entry_fee' => 'required|string',
+                'image' => 'nullable|string',
             ]);
             
             if ($validator->fails()) {
@@ -248,6 +249,7 @@ class NoCSRFController extends Controller
                 'description' => $data['description'],
                 'format' => $data['format'],
                 'entry_fee' => $data['entry_fee'],
+                'image' => isset($data['image']) ? $this->formatImageUrl($data['image']) : null,
                 'teams' => [],
             ]);
             
@@ -296,6 +298,11 @@ class NoCSRFController extends Controller
             }
             
             Log::info('NoCSRFController - Données JSON décodées', ['data' => $data]);
+            
+            // Formatage de l'URL de l'image si nécessaire
+            if (isset($data['image'])) {
+                $data['image'] = $this->formatImageUrl($data['image']);
+            }
             
             // Mise à jour du tournoi
             $tournament->update($data);

@@ -4,16 +4,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Gestion des CORS pour les requêtes depuis le frontend React
-header('Access-Control-Allow-Origin: ' . (getenv('CORS_ALLOWED_ORIGINS') ?: 'http://localhost:3000'));
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Accept');
-header('Content-Type: application/json');
-
-// Traiter les requêtes OPTIONS immédiatement
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
-}
+// Gestion des CORS via le script centralisé
+require_once __DIR__ . '/cors-header.php';
 
 // Vérifier que la méthode de requête est POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

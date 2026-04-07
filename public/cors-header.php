@@ -10,10 +10,22 @@ $allowed_origins = [
     'https://goal-time-fkhb.vercel.app'
 ];
 
-if (in_array($origin, $allowed_origins)) {
+// Check if the current origin is in the allowed list
+// We trim any trailing slashes from the origin to compare correctly
+$normalized_origin = rtrim($origin, '/');
+$is_allowed = false;
+
+foreach ($allowed_origins as $allowed) {
+    if ($normalized_origin === rtrim($allowed, '/')) {
+        $is_allowed = true;
+        break;
+    }
+}
+
+if ($is_allowed) {
     header('Access-Control-Allow-Origin: ' . $origin);
 } else {
-    // Default to the production Vercel URL if origin doesn't match or is missing
+    // Default to a safe allowed origin if not matched
     header('Access-Control-Allow-Origin: https://goal-time-fkhb.vercel.app');
 }
 

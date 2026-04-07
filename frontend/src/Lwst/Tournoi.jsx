@@ -17,15 +17,11 @@ function Tournoi({ user }) {
         email: ''
     });
     const [tournoiFormData, setTournoiFormData] = useState({
-        name: '',
-        date: '',
-        maxTeams: '',
-        registeredTeams: 0,
-        prizePool: '',
-        description: '',
         format: '',
-        entryFee: ''
+        entryFee: '',
+        image: null
     });
+    const [imagePreview, setImagePreview] = useState(null);
     const [confirmationMessage, setConfirmationMessage] = useState('');
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
     const [error, setError] = useState(null);
@@ -91,8 +87,10 @@ function Tournoi({ user }) {
             prizePool: '',
             description: '',
             format: '',
-            entryFee: ''
+            entryFee: '',
+            image: null
         });
+        setImagePreview(null);
     };
 
     const handleChange = (e) => {
@@ -109,6 +107,62 @@ function Tournoi({ user }) {
             ...tournoiFormData,
             [name]: value
         });
+    };
+
+    const handleImageChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.match(/^image\/(jpeg|png|jpg)$/)) {
+            setError('Type de fichier non autorisé. Utilisez JPG ou PNG.');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            setError('L\'image est trop grande. Taille maximum: 5MB');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImagePreview(reader.result);
+        };
+        reader.readAsDataURL(file);
+
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const response = await fetch(`${BASE_URL}/direct-upload.php`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const responseData = await response.json();
+                if (responseData && responseData.url) {
+                    setTournoiFormData(prev => ({
+                        ...prev,
+                        image: responseData.url
+                    }));
+                    setConfirmationMessage('Image téléchargée avec succès');
+                    setTimeout(() => setConfirmationMessage(''), 3000);
+                }
+            } else {
+                throw new Error('Erreur lors de l\'upload de l\'image');
+            }
+        } catch (error) {
+            setError(error.message);
+            setImagePreview(null);
+        }
+    };
+
+    const getImageUrl = (imageUrl) => {
+        if (!imageUrl) return '/placeholder-tournament.jpg';
+        if (imageUrl.startsWith('/storage')) {
+            return `${BASE_URL}${imageUrl}`;
+        }
+        return imageUrl;
     };
 
     const handleSubmit = async (e) => {
@@ -162,8 +216,10 @@ function Tournoi({ user }) {
             prizePool: tournoi.prize_pool,
             description: tournoi.description,
             format: tournoi.format,
-            entryFee: tournoi.entry_fee
+            entryFee: tournoi.entry_fee,
+            image: tournoi.image
         });
+        setImagePreview(tournoi.image ? getImageUrl(tournoi.image) : null);
         setSelectedTournoi(tournoi);
         setIsEditMode(true);
         setIsAddTournoiModalOpen(true);
@@ -179,7 +235,8 @@ function Tournoi({ user }) {
                 prize_pool: tournoiFormData.prizePool,
                 description: tournoiFormData.description,
                 format: tournoiFormData.format,
-                entry_fee: tournoiFormData.entryFee
+                entry_fee: tournoiFormData.entryFee,
+                image: tournoiFormData.image
             });
 
             setTournaments(tournaments.map(t => 
@@ -209,6 +266,7 @@ function Tournoi({ user }) {
                 description: tournoiFormData.description,
                 format: tournoiFormData.format,
                 entry_fee: tournoiFormData.entryFee,
+                image: tournoiFormData.image,
                 registered_teams: 0,
                 teams: []
             });
@@ -386,53 +444,58 @@ function Tournoi({ user }) {
                                 </button>
                             </div>
                         )}
-                        <h2 className="tournoi-title">{tournoi.name}</h2>
-                        <div className="tournoi-info">
-                            <p><i className="fas fa-calendar-alt"></i> Date: {tournoi.date ? tournoi.date.split('T')[0] : tournoi.date}</p>
-                            <p><i className="fas fa-users"></i> Équipes: {tournoi.registered_teams}/{tournoi.max_teams}</p>
-                            <p><i className="fas fa-trophy"></i> <strong>Prix:</strong> {tournoi.prize_pool}</p>
-                            <p><i className="fas fa-sitemap"></i> <strong>Format:</strong> {tournoi.format}</p>
-                            <p><i className="fas fa-money-bill-wave"></i> <strong>Frais d'inscription:</strong> {tournoi.entry_fee}</p>
-                            <p className="description">{tournoi.description}</p>
+                        <div className="tournoi-image">
+                            <img src={getImageUrl(tournoi.image)} alt={tournoi.name} />
                         </div>
+                        <div className="tournoi-card-content">
+                            <h2 className="tournoi-title">{tournoi.name}</h2>
+                            <div className="tournoi-info">
+                                <p><i className="fas fa-calendar-alt"></i> Date: {tournoi.date ? tournoi.date.split('T')[0] : tournoi.date}</p>
+                                <p><i className="fas fa-users"></i> Équipes: {tournoi.registered_teams}/{tournoi.max_teams}</p>
+                                <p><i className="fas fa-trophy"></i> <strong>Prix:</strong> {tournoi.prize_pool}</p>
+                                <p><i className="fas fa-sitemap"></i> <strong>Format:</strong> {tournoi.format}</p>
+                                <p><i className="fas fa-money-bill-wave"></i> <strong>Frais d'inscription:</strong> {tournoi.entry_fee}</p>
+                                <p className="description">{tournoi.description}</p>
+                            </div>
 
-                        <div className="tournoi-actions">
-                            {user ? (
-                                <>
-                                    {user.role !== 'admin' && (
-                                        <>
-                                            {isUserRegisteredForTournament(tournoi) ? (
-                                                <button
-                                                    className="btn-unregister"
-                                                    onClick={() => handleUnregister(tournoi.id)}
-                                                >
-                                                    <i className="fas fa-user-minus"></i> Se désinscrire
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    className="btn-register"
-                                                    onClick={() => handleRegisterClick(tournoi)}
-                                                    disabled={tournoi.registered_teams >= tournoi.max_teams}
-                                                >
-                                                    <i className="fas fa-user-plus"></i> S'inscrire
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
-                                    <Link to={`/tournoi/${tournoi.id}`} className="btn-view-details">
-                                        <i className="fas fa-info-circle"></i> Voir les détails
-                                    </Link>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="login-required">
-                                        <i className="fas fa-lock"></i> Connectez-vous pour participer à ce tournoi.
-                                    </div>
-                                    <Link to={`/tournoi/${tournoi.id}`} className="btn-view-details">
-                                        <i className="fas fa-info-circle"></i> Voir les détails
-                                    </Link>
-                                </>
-                            )}
+                            <div className="tournoi-actions">
+                                {user ? (
+                                    <>
+                                        {user.role !== 'admin' && (
+                                            <>
+                                                {isUserRegisteredForTournament(tournoi) ? (
+                                                    <button
+                                                        className="btn-unregister"
+                                                        onClick={() => handleUnregister(tournoi.id)}
+                                                    >
+                                                        <i className="fas fa-user-minus"></i> Se désinscrire
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        className="btn-register"
+                                                        onClick={() => handleRegisterClick(tournoi)}
+                                                        disabled={tournoi.registered_teams >= tournoi.max_teams}
+                                                    >
+                                                        <i className="fas fa-user-plus"></i> S'inscrire
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                        <Link to={`/tournoi/${tournoi.id}`} className="btn-view-details">
+                                            <i className="fas fa-info-circle"></i> Voir les détails
+                                        </Link>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="login-required">
+                                            <i className="fas fa-lock"></i> Connectez-vous pour participer à ce tournoi.
+                                        </div>
+                                        <Link to={`/tournoi/${tournoi.id}`} className="btn-view-details">
+                                            <i className="fas fa-info-circle"></i> Voir les détails
+                                        </Link>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                 ))}
@@ -506,6 +569,20 @@ function Tournoi({ user }) {
                     <div className="modal-content">
                         <h2>{isEditMode ? 'Modifier le tournoi' : 'Ajouter un nouveau tournoi'}</h2>
                         <form onSubmit={isEditMode ? handleEditTournoi : handleAddTournoi} className="tournoi-form">
+                            <div className="form-group">
+                                <label>Image du tournoi:</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageChange}
+                                    className="form-control"
+                                />
+                                {imagePreview && (
+                                    <div className="image-preview-container">
+                                        <img src={imagePreview} alt="Preview" className="image-preview" style={{ maxWidth: '100px', marginTop: '10px' }} />
+                                    </div>
+                                )}
+                            </div>
                             <div className="form-group">
                                 <label>Nom du tournoi:</label>
                                 <input

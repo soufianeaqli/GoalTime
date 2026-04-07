@@ -4,16 +4,8 @@
  * Script direct pour gérer les messages de contact sans CSRF
  */
 
-// Définir les en-têtes CORS
-header('Access-Control-Allow-Origin: ' . (getenv('CORS_ALLOWED_ORIGINS') ?: 'http://localhost:3000'));
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN');
-header('Content-Type: application/json');
-
-// Si c'est une requête OPTIONS (preflight), retourner juste les en-têtes
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
-}
+// Définir les en-têtes CORS via le fichier centralisé
+require_once __DIR__ . '/cors-header.php';
 
 // Inclure le bootstrap de Laravel pour avoir accès à l'application
 require __DIR__.'/../vendor/autoload.php';

@@ -19,6 +19,7 @@ class Tournament extends Model
         'format',
         'entry_fee',
         'teams',
+        'image',
     ];
 
     protected $casts = [
