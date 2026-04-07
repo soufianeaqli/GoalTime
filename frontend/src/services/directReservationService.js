@@ -11,7 +11,7 @@ import { BASE_URL, API_BASE_URL, API_URL } from './config';
 export const getAllReservations = async () => {
   try {
     console.log('Chargement de toutes les réservations via script direct');
-    const response = await fetch(`${API_BASE_URL}/direct-get-reservations.php?include_terrain=true`, {
+    const response = await fetch(`${BASE_URL}/direct-get-reservations.php?include_terrain=true`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
@@ -40,7 +40,7 @@ export const getAllReservations = async () => {
 export const getUserReservations = async (username) => {
   try {
     console.log(`Chargement des réservations pour l'utilisateur ${username} via script direct`);
-    const response = await fetch(`${API_BASE_URL}/direct-get-user-reservations.php?user_id=${username}&include_terrain=true`, {
+    const response = await fetch(`${BASE_URL}/direct-get-user-reservations.php?user_id=${username}&include_terrain=true`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
@@ -81,7 +81,7 @@ export const createReservation = async (reservationData) => {
     
     console.log('Données formatées pour l\'envoi:', dataToSend);
     
-    const response = await fetch(`${API_BASE_URL}/direct-create-reservation.php`, {
+    const response = await fetch(`${BASE_URL}/direct-create-reservation.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -122,7 +122,7 @@ export const createReservation = async (reservationData) => {
 export const updateReservation = async (id, reservationData) => {
   try {
     console.log(`Mise à jour de la réservation ${id} via script direct:`, reservationData);
-    const response = await fetch(`${API_BASE_URL}/direct-update-reservation.php`, {
+    const response = await fetch(`${BASE_URL}/direct-update-reservation.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -159,7 +159,7 @@ export const updateReservation = async (id, reservationData) => {
 export const deleteReservation = async (id, userId = null, isAdmin = false) => {
   try {
     console.log(`Suppression de la réservation ${id} via script direct (admin: ${isAdmin})`);
-    let url = `${API_BASE_URL}/direct-delete-reservation.php?id=${id}`;
+    let url = `${BASE_URL}/direct-delete-reservation.php?id=${id}`;
     
     if (userId) {
       url += `&user_id=${userId}`;
@@ -204,7 +204,7 @@ export const deleteReservation = async (id, userId = null, isAdmin = false) => {
 export const checkAvailability = async (terrainId, date, timeSlot) => {
   try {
     console.log(`Vérification de la disponibilité pour le terrain ${terrainId}, date ${date}, créneau ${timeSlot}`);
-    const response = await fetch(`${API_BASE_URL}/direct-check-availability.php?terrain_id=${terrainId}&date=${date}&time_slot=${timeSlot}`, {
+    const response = await fetch(`${BASE_URL}/direct-check-availability.php?terrain_id=${terrainId}&date=${date}&time_slot=${timeSlot}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
@@ -237,7 +237,7 @@ export const checkAvailability = async (terrainId, date, timeSlot) => {
 export const markAsPaid = async (id, userId = null) => {
   try {
     console.log(`Marquage de la réservation ${id} comme payée via script direct`);
-    let url = `${API_BASE_URL}/direct-mark-paid.php?id=${id}`;
+    let url = `${BASE_URL}/direct-mark-paid.php?id=${id}`;
     if (userId) {
       url += `&user_id=${userId}`;
     }

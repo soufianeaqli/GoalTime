@@ -11,7 +11,7 @@ import { BASE_URL, API_BASE_URL, API_URL } from './config';
 export const getAllTerrains = async () => {
   try {
     console.log('Chargement des terrains via script direct');
-    const response = await fetch(`${API_BASE_URL}/direct-get-terrains.php`, {
+    const response = await fetch(`${BASE_URL}/direct-get-terrains.php`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
@@ -40,7 +40,7 @@ export const getAllTerrains = async () => {
 export const getTerrain = async (id) => {
   try {
     console.log(`Chargement du terrain ${id} via script direct`);
-    const response = await fetch(`${API_BASE_URL}/direct-get-terrain.php?id=${id}`, {
+    const response = await fetch(`${BASE_URL}/direct-get-terrain.php?id=${id}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
@@ -76,7 +76,7 @@ export const addTerrain = async (terrainData) => {
       formData.append(key, terrainData[key]);
     });
 
-    const response = await fetch(`${API_BASE_URL}/direct-add.php`, {
+    const response = await fetch(`${BASE_URL}/direct-add.php`, {
       method: 'POST',
       body: formData
     });
@@ -103,7 +103,7 @@ export const addTerrain = async (terrainData) => {
 export const deleteTerrain = async (id) => {
   try {
     console.log(`Suppression du terrain ${id} via script direct`);
-    const response = await fetch(`${API_BASE_URL}/direct-delete.php?id=${id}`, {
+    const response = await fetch(`${BASE_URL}/direct-delete.php?id=${id}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
@@ -146,7 +146,7 @@ export const uploadImage = async (file) => {
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch(`${API_BASE_URL}/direct-upload.php`, {
+    const response = await fetch(`${BASE_URL}/direct-upload.php`, {
       method: 'POST',
       body: formData
     });
