@@ -1,6 +1,6 @@
 import * as directReservationService from './directReservationService';
 
-import { BASE_URL } from './config';
+import { BASE_URL, API_BASE_URL, API_URL } from './config';
 
 // Récupérer toutes les réservations
 export const getAllReservations = async () => {

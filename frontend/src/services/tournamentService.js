@@ -1,8 +1,8 @@
-import { BASE_URL, API_BASE_URL } from './config';
+import { BASE_URL, API_BASE_URL, API_URL } from './config';
 
 const getCSRFToken = async () => {
     try {
-        await fetch('${API_URL}/sanctum/csrf-cookie', {
+        await fetch(`${API_URL}/sanctum/csrf-cookie`, {
             credentials: 'include'
         });
     } catch (error) {

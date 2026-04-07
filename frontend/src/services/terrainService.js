@@ -2,7 +2,7 @@
  * Service pour la gestion des terrains via les scripts PHP directs
  */
 
-import { BASE_URL } from './config';
+import { BASE_URL, API_BASE_URL, API_URL } from './config';
 
 /**
  * Récupère tous les terrains
