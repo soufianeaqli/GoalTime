@@ -9,16 +9,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Autoriser les requêtes CORS
-header('Access-Control-Allow-Origin: ' . (getenv('CORS_ALLOWED_ORIGINS') ?: 'http://localhost:3000'));
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Accept');
-
-// Répondre immédiatement aux requêtes OPTIONS
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+// Définir les en-têtes CORS via le fichier centralisé
+require_once __DIR__ . '/cors-header.php';
 
 // Vérifier si c'est une requête POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
