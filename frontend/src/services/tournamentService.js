@@ -60,22 +60,21 @@ export const getTournamentById = async (id) => {
 
 export const createTournament = async (tournamentData) => {
     try {
-        // Convertir les données en JSON et encoder pour l'URL
-        const jsonData = encodeURIComponent(JSON.stringify(tournamentData));
-        
-        // Utiliser la route sans CSRF avec méthode GET
-        const response = await fetch(`${API_URL}/api/no-csrf/add-tournament?data=${jsonData}`, {
-            method: 'GET',
+        // Utiliser le script direct avec méthode POST
+        const response = await fetch(`${BASE_URL}/direct-add-tournament.php`, {
+            method: 'POST',
             headers: {
-                'Accept': 'application/json'
-            }
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(tournamentData)
         });
         
         const data = await response.json();
         if (!response.ok) {
             throw new Error(data.message || 'Erreur lors de la création du tournoi');
         }
-        return data;
+        return data.tournament || data;
     } catch (error) {
         console.error('Error creating tournament:', error);
         throw error;
@@ -84,22 +83,24 @@ export const createTournament = async (tournamentData) => {
 
 export const updateTournament = async (id, tournamentData) => {
     try {
-        // Convertir les données en JSON et encoder pour l'URL
-        const jsonData = encodeURIComponent(JSON.stringify(tournamentData));
+        // S'assurer que l'ID est inclus dans les données
+        const dataWithId = { ...tournamentData, id };
         
-        // Utiliser la route sans CSRF avec méthode GET
-        const response = await fetch(`${API_URL}/api/no-csrf/update-tournament/${id}?data=${jsonData}`, {
-            method: 'GET',
+        // Utiliser le script de mise à jour direct
+        const response = await fetch(`${BASE_URL}/direct-update-tournoi.php`, {
+            method: 'POST',
             headers: {
-                'Accept': 'application/json'
-            }
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(dataWithId)
         });
         
         const data = await response.json();
         if (!response.ok) {
             throw new Error(data.message || 'Erreur lors de la modification du tournoi');
         }
-        return data;
+        return data; // Contient success: true et le tournoi mis à jour
     } catch (error) {
         console.error('Error updating tournament:', error);
         throw error;
@@ -108,7 +109,7 @@ export const updateTournament = async (id, tournamentData) => {
 
 export const deleteTournament = async (id) => {
     try {
-        const response = await fetch(`${API_URL}/api/no-csrf/delete-tournament/${id}`, {
+        const response = await fetch(`${BASE_URL}/direct-delete-tournament.php?id=${id}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
