@@ -110,7 +110,7 @@ function App() {
     const fetchTerrains = async () => {
       try {
         // Utiliser le script PHP direct sans CSRF
-        const response = await fetch('${BASE_URL}/direct-get-terrains.php', {
+        const response = await fetch(`${BASE_URL}/direct-get-terrains.php`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'

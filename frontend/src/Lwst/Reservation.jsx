@@ -90,7 +90,7 @@ function Reservation({ user }) {
             try {
                 console.log('Enrichissement des réservations avec les noms de terrains');
                 // Faire une requête pour obtenir tous les terrains
-                const response = await fetch('${BASE_URL}/direct-get-terrains.php', {
+                const response = await fetch(`${BASE_URL}/direct-get-terrains.php`, {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json'

@@ -36,7 +36,7 @@ function Terrain({ addReservation, reservations, user }) {
         const fetchTerrains = async () => {
             try {
                 // Utiliser le script PHP direct sans CSRF
-                const response = await fetch('${BASE_URL}/direct-get-terrains.php', {
+                const response = await fetch(`${BASE_URL}/direct-get-terrains.php`, {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json'
@@ -119,7 +119,7 @@ function Terrain({ addReservation, reservations, user }) {
             const formData = new FormData();
             formData.append('image', file);
 
-            const response = await fetch('${BASE_URL}/direct-upload.php', {
+            const response = await fetch(`${BASE_URL}/direct-upload.php`, {
                 method: 'POST',
                 body: formData
             });
@@ -169,7 +169,7 @@ function Terrain({ addReservation, reservations, user }) {
             console.log('Données à envoyer:', terrainData);
 
             // Utiliser le script PHP direct sans CSRF
-            const response = await fetch('${BASE_URL}/direct-add.php', {
+            const response = await fetch(`${BASE_URL}/direct-add.php`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
