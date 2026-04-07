@@ -28,19 +28,22 @@ function loadEnvVars() {
         $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         
         foreach ($lines as $line) {
-            if (strpos(trim($line), '#') === 0) continue;
+            $trimmedLine = trim($line);
+            if (empty($trimmedLine) || strpos($trimmedLine, '#') === 0) continue;
             
             if (strpos($line, '=') !== false) {
                 list($name, $value) = explode('=', $line, 2);
                 $name = trim($name);
                 $value = trim($value);
                 
+                // Retirer les guillemets si présents
                 if (preg_match('/^"(.+)"$/', $value, $matches)) {
                     $value = $matches[1];
                 } elseif (preg_match("/^'(.+)'$/", $value, $matches)) {
                     $value = $matches[1];
                 }
                 
+                // Remplacement de variables ${VAR}
                 if (preg_match('/\${(.+)}/', $value, $matches)) {
                     $varName = $matches[1];
                     if (isset($env[$varName])) {
@@ -49,10 +52,16 @@ function loadEnvVars() {
                 }
                 
                 $env[$name] = $value;
-                // Mettre aussi dans $_ENV pour la compatibilité
                 $_ENV[$name] = $value;
             }
         }
+    }
+
+    // Normalisation pour la production (Railway utilise souvent 127.0.0.1 au lieu de localhost sur certaines configs)
+    if (isset($env['DB_HOST']) && ($env['DB_HOST'] === 'localhost' || $env['DB_HOST'] === '127.0.0.1')) {
+        // En PHP PDO, 'localhost' essaie d'utiliser un socket Unix, '127.0.0.1' utilise TCP/IP.
+        // TCP/IP est plus fiable dans les containers.
+        $env['DB_HOST'] = '127.0.0.1';
     }
     
     return $env;

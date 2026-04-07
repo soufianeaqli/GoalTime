@@ -184,21 +184,18 @@ function Terrain({ addReservation, reservations, user }) {
                 const responseData = await response.json();
                 console.log('Réponse du serveur:', responseData);
                 
-                setTerrains(prev => [...prev, responseData.terrain]);
-                setConfirmationMessage('Terrain ajouté avec succès');
-                
-                setNewTerrain({
-                    titre: '',
-                    description: '',
-                    prix: '',
-                    image: null
-                });
-                setImagePreview(null);
-                setShowAddTerrainForm(false);
+                if (responseData.success && responseData.terrain) {
+                    setTerrains(prev => [...prev, responseData.terrain]);
+                    setShowAddTerrainForm(false);
+                    setNewTerrain({ titre: '', description: '', prix: '', image: null });
+                    setImagePreview(null);
+                    setConfirmationMessage('Terrain ajouté avec succès');
+                } else {
+                    throw new Error(responseData.message || 'Échec de l\'ajout du terrain');
+                }
             } else {
-                // Gérer les erreurs
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || 'Erreur lors de l\'ajout du terrain');
+                throw new Error(errorData.message || `Erreur serveur: ${response.status}`);
             }
         } catch (error) {
             console.error('Erreur lors de l\'ajout du terrain:', error);
@@ -348,51 +345,55 @@ function Terrain({ addReservation, reservations, user }) {
             {/* Prompt de connexion */}
             {showLoginPrompt && <LoginPrompt />}
             
-            {/* Grid de terrains */}
             <div className="container">
-                {terrains.map((terrain) => (
-                    <div key={terrain.id} className="terrain">
-                        <img src={getImageUrl(terrain.image)} alt={terrain.titre} />
-                        <div className="terrain-content">
-                            <div className="terrain-info">
-                                <h3 className="terrain-title">{terrain.titre}</h3>
-                                <p>{terrain.description}</p>
-                                <div className="terrain-price">{terrain.prix} DH/heure</div>
+                {terrains && terrains.length > 0 && terrains.map(terrain => {
+                    if (!terrain) return null;
+                    return (
+                        <div className="terrain-card" key={terrain.id}>
+                            <div className="terrain-image">
+                                <img src={getImageUrl(terrain.image)} alt={terrain.titre || 'Terrain'} />
                             </div>
-                            <div className="terrain-actions">
-                                <button
-                                    className="btn-detail"
-                                    onClick={() => handleViewDetails(terrain.id)}
-                                >
-                                    <i className="fas fa-info-circle"></i>
-                                    Détail
-                                </button>
-                                
-                                {user ? (
-                                    <>
-                                        {user.role !== 'admin' && (
-                                            <button
-                                                className="btnn"
-                                                onClick={() => handleReserveClick(terrain.id)}
-                                            >
-                                                <i className="fas fa-calendar-alt"></i> Réserver
-                                            </button>
-                                        )}
-                                        
-                                        {user.role === 'admin' && (
-                                            <button
-                                                className="btnnn"
-                                                onClick={() => handleDeleteConfirmation(terrain.id)}
-                                            >
-                                                <i className="fas fa-trash-alt"></i> Supprimer
-                                            </button>
-                                        )}
-                                    </>
-                                ) : null}
+                            <div className="terrain-content">
+                                <div className="terrain-info">
+                                    <h3 className="terrain-title">{terrain.titre}</h3>
+                                    <p>{terrain.description}</p>
+                                    <div className="terrain-price">{terrain.prix} DH/heure</div>
+                                </div>
+                                <div className="terrain-actions">
+                                    <button
+                                        className="btn-detail"
+                                        onClick={() => handleViewDetails(terrain.id)}
+                                    >
+                                        <i className="fas fa-info-circle"></i>
+                                        Détail
+                                    </button>
+                                    
+                                    {user ? (
+                                        <>
+                                            {user.role !== 'admin' && (
+                                                <button
+                                                    className="btnn"
+                                                    onClick={() => handleReserveClick(terrain.id)}
+                                                >
+                                                    <i className="fas fa-calendar-alt"></i> Réserver
+                                                </button>
+                                            )}
+                                            
+                                            {user.role === 'admin' && (
+                                                <button
+                                                    className="btnnn"
+                                                    onClick={() => handleDeleteConfirmation(terrain.id)}
+                                                >
+                                                    <i className="fas fa-trash-alt"></i> Supprimer
+                                                </button>
+                                            )}
+                                        </>
+                                    ) : null}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Modal de réservation */}

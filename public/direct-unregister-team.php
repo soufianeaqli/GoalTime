@@ -7,124 +7,109 @@ error_reporting(E_ALL);
 // Gestion des CORS via le script centralisé
 require_once __DIR__ . '/cors-header.php';
 
-// Vérifier que la méthode de requête est GET
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'message' => 'Méthode non autorisée']);
-    exit;
+// Vérifier que la méthode de requête est GET ou POST (le frontend peut utiliser les deux selon les cas)
+$method = $_SERVER['REQUEST_METHOD'];
+
+// Récupérer les données selon la méthode
+if ($method === 'POST') {
+    $jsonInput = file_get_contents('php://input');
+    $data = json_decode($jsonInput, true);
+    $tournoiId = $data['tournoi_id'] ?? null;
+    $userId = $data['user_id'] ?? null;
+} else {
+    $tournoiId = $_GET['tournoi_id'] ?? null;
+    $userId = $_GET['user_id'] ?? null;
 }
 
 // Vérifier que les paramètres nécessaires sont fournis
-if (!isset($_GET['tournoi_id']) || !isset($_GET['user_id'])) {
+if (!$tournoiId || !$userId) {
     http_response_code(400);
+    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Paramètres manquants: tournoi_id et user_id sont requis']);
     exit;
 }
 
-$tournoiId = $_GET['tournoi_id'];
-$userId = $_GET['user_id'];
-
 // Inclure la fonction de chargement des variables d'environnement
 require_once __DIR__ . '/env-loader.php';
-
-// Charger les variables d'environnement
 $env = loadEnvVars();
-if (empty($env) || empty($env['DB_HOST']) || empty($env['DB_DATABASE']) || empty($env['DB_USERNAME'])) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Impossible de charger les variables d\'environnement']);
-    exit;
-}
 
 try {
     // Connexion à la base de données
-    $dsn = "mysql:host={$env['DB_HOST']};dbname={$env['DB_DATABASE']};charset=utf8mb4";
+    $host = $env['DB_HOST'] ?? '127.0.0.1';
+    $port = $env['DB_PORT'] ?? '3306';
+    $dbname = $env['DB_DATABASE'] ?? 'laravel';
+    $username = $env['DB_USERNAME'] ?? 'root';
+    $password = $env['DB_PASSWORD'] ?? '';
+    
+    $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
     $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
     ];
-    $pdo = new PDO($dsn, $env['DB_USERNAME'], $env['DB_PASSWORD'], $options);
+    $pdo = new PDO($dsn, $username, $password, $options);
 
-    // Vérifier que le tournoi existe
-    $stmt = $pdo->prepare("SELECT * FROM tournois WHERE id = ?");
+    // Vérifier que le tournoi existe (La table Laravel est 'tournaments')
+    $stmt = $pdo->prepare("SELECT * FROM tournaments WHERE id = ?");
     $stmt->execute([$tournoiId]);
-    $tournoi = $stmt->fetch();
+    $tournament = $stmt->fetch();
     
-    if (!$tournoi) {
+    if (!$tournament) {
         http_response_code(404);
+        header('Content-Type: application/json');
         echo json_encode(['success' => false, 'message' => 'Tournoi non trouvé']);
         exit;
     }
 
-    // Trouver l'équipe de l'utilisateur dans ce tournoi
-    $stmt = $pdo->prepare("SELECT * FROM tournoi_teams WHERE tournoi_id = ? AND user_id = ?");
-    $stmt->execute([$tournoiId, $userId]);
-    $team = $stmt->fetch();
+    // Décoder les équipes existantes (stockées en JSON dans la colonne 'teams')
+    $teams = !empty($tournament['teams']) ? json_decode($tournament['teams'], true) : [];
+    if (!is_array($teams)) $teams = [];
+
+    // Trouver et supprimer l'équipe de l'utilisateur
+    $found = false;
+    $newTeams = [];
+    foreach ($teams as $team) {
+        if ($team['user_id'] == $userId) {
+            $found = true;
+            continue; // On saute cette équipe pour la supprimer
+        }
+        $newTeams[] = $team;
+    }
     
-    if (!$team) {
+    if (!$found) {
         http_response_code(404);
+        header('Content-Type: application/json');
         echo json_encode(['success' => false, 'message' => 'Vous n\'êtes pas inscrit à ce tournoi']);
         exit;
     }
 
-    // Supprimer l'équipe
-    $stmt = $pdo->prepare("DELETE FROM tournoi_teams WHERE id = ?");
-    $stmt->execute([$team['id']]);
-    
-    // Récupérer le tournoi mis à jour avec toutes ses équipes restantes
-    $stmt = $pdo->prepare("SELECT * FROM tournois WHERE id = ?");
-    $stmt->execute([$tournoiId]);
-    $tournoi = $stmt->fetch();
-    
-    $stmt = $pdo->prepare("SELECT * FROM tournoi_teams WHERE tournoi_id = ?");
-    $stmt->execute([$tournoiId]);
-    $teams = $stmt->fetchAll();
-    
-    // Formater le tournoi pour correspondre au frontend
-    $formattedTournoi = [
-        'id' => $tournoi['id'],
-        'name' => $tournoi['name'],
-        'date' => $tournoi['date'],
-        'maxTeams' => $tournoi['max_teams'],
-        'prizePool' => $tournoi['prize_pool'],
-        'description' => $tournoi['description'],
-        'format' => $tournoi['format'],
-        'entryFee' => $tournoi['entry_fee'],
-        'teams' => [],
-        'registeredTeams' => count($teams)
-    ];
-    
-    // Formater les équipes
-    foreach ($teams as $t) {
-        $formattedTournoi['teams'][] = [
-            'id' => $t['id'],
-            'name' => $t['name'],
-            'captain' => $t['captain'],
-            'email' => $t['email'],
-            'phoneNumber' => $t['phone'],
-            'userId' => $t['user_id'],
-            'players' => $t['players'],
-            'registrationDate' => $t['registration_date']
-        ];
-    }
+    $registeredTeamsCount = count($newTeams);
+
+    // Mettre à jour le tournoi dans la base de données
+    $stmt = $pdo->prepare("UPDATE tournaments SET teams = ?, registered_teams = ?, updated_at = NOW() WHERE id = ?");
+    $stmt->execute([json_encode($newTeams), $registeredTeamsCount, $tournoiId]);
     
     // Renvoyer la réponse
+    header('Content-Type: application/json');
     echo json_encode([
         'success' => true,
         'message' => 'Désinscription réussie',
-        'data' => [
-            'tournoi' => $formattedTournoi,
-            'teamId' => $team['id'],
-            'unregistered' => true
+        'tournament' => [
+            'id' => (int)$tournament['id'],
+            'name' => $tournament['name'],
+            'teams' => $newTeams,
+            'registered_teams' => $registeredTeamsCount
         ]
     ]);
 
 } catch (PDOException $e) {
     error_log("Erreur PDO lors de la désinscription: " . $e->getMessage());
     http_response_code(500);
+    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Erreur de base de données: ' . $e->getMessage()]);
 } catch (Exception $e) {
     error_log("Erreur lors de la désinscription: " . $e->getMessage());
     http_response_code(500);
+    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Erreur serveur: ' . $e->getMessage()]);
 } 

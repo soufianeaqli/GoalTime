@@ -181,7 +181,7 @@ function Tournoi({ user }) {
             
             // Mettre à jour ce tournoi spécifique dans la liste des tournois
             setTournaments(tournaments.map(t => 
-                t.id === updatedTournament.id ? updatedTournament : t
+                t && t.id === updatedTournament.id ? updatedTournament : t
             ));
             
             setConfirmationMessage('Inscription réussie!');
@@ -228,7 +228,7 @@ function Tournoi({ user }) {
     const handleEditTournoi = async (e) => {
         e.preventDefault();
         try {
-            const updatedTournament = await tournamentService.updateTournament(selectedTournoi.id, {
+            const response = await tournamentService.updateTournament(selectedTournoi.id, {
                 name: tournoiFormData.name,
                 date: tournoiFormData.date,
                 max_teams: tournoiFormData.maxTeams,
@@ -239,16 +239,22 @@ function Tournoi({ user }) {
                 image: tournoiFormData.image
             });
 
-            setTournaments(tournaments.map(t => 
-                t.id === updatedTournament.id ? updatedTournament : t
-            ));
-            
-            setConfirmationMessage('Tournoi modifié avec succès!');
-            setTimeout(() => {
-                setConfirmationMessage('');
-            }, 3000);
-            
-            handleCloseTournoiModal();
+            if (response.ok) {
+                const responseData = await response.json();
+                if (responseData.success) {
+                    setTournaments(tournaments.map(t => 
+                        t && t.id === selectedTournoi.id ? responseData.tournament : t
+                    ));
+                    handleCloseTournoiModal();
+                    setConfirmationMessage('Le tournoi a été mis à jour avec succès.');
+                    setTimeout(() => setConfirmationMessage(''), 5000);
+                } else {
+                    throw new Error(responseData.message || 'Échec de la mise à jour du tournoi');
+                }
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Erreur serveur: ${response.status}`);
+            }
         } catch (error) {
             setError('Erreur lors de la modification du tournoi');
             console.error('Error:', error);
@@ -422,7 +428,9 @@ function Tournoi({ user }) {
 
             {/* Grille de tournois */}
             <div className="tournois-grid">
-                {tournaments.map((tournoi) => (
+                {tournaments && tournaments.length > 0 && tournaments.map(tournoi => {
+                    if (!tournoi) return null;
+                    return (
                     <div key={tournoi.id} className="tournoi-card">
                         {user && user.role === 'admin' && (
                             <div className="admin-actions">
@@ -498,7 +506,8 @@ function Tournoi({ user }) {
                             </div>
                         </div>
                     </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Modals pour inscription, ajout et édition de tournoi */}

@@ -15,6 +15,7 @@ require_once __DIR__ . '/cors-header.php';
 // Vérifier que la méthode de requête est GET
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);
+    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Méthode non autorisée']);
     exit;
 }
@@ -22,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 // Vérifier que l'ID est fourni
 if (!isset($_GET['id']) || !is_numeric($_GET['id']) || $_GET['id'] <= 0) {
     http_response_code(400);
+    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'ID de réservation invalide']);
     exit;
 }
@@ -32,24 +34,23 @@ $isAdmin = isset($_GET['is_admin']) && $_GET['is_admin'] === 'true';
 
 // Inclure la fonction de chargement des variables d'environnement
 require_once __DIR__ . '/env-loader.php';
-
-// Charger les variables d'environnement
 $env = loadEnvVars();
-if (empty($env) || empty($env['DB_HOST']) || empty($env['DB_DATABASE']) || empty($env['DB_USERNAME'])) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Impossible de charger les variables d\'environnement']);
-    exit;
-}
 
 try {
     // Connexion à la base de données
-    $dsn = "mysql:host={$env['DB_HOST']};dbname={$env['DB_DATABASE']};charset=utf8mb4";
+    $host = $env['DB_HOST'] ?? '127.0.0.1';
+    $port = $env['DB_PORT'] ?? '3306';
+    $dbname = $env['DB_DATABASE'] ?? 'laravel';
+    $username = $env['DB_USERNAME'] ?? 'root';
+    $password = $env['DB_PASSWORD'] ?? '';
+    
+    $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
     $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
     ];
-    $pdo = new PDO($dsn, $env['DB_USERNAME'], $env['DB_PASSWORD'], $options);
+    $pdo = new PDO($dsn, $username, $password, $options);
 
     // Vérifier que la réservation existe
     $stmt = $pdo->prepare("SELECT * FROM reservations WHERE id = ?");
@@ -58,6 +59,7 @@ try {
 
     if (!$reservation) {
         http_response_code(404);
+        header('Content-Type: application/json');
         echo json_encode(['success' => false, 'message' => 'Réservation non trouvée']);
         exit;
     }
@@ -65,19 +67,17 @@ try {
     // Si l'utilisateur n'est pas admin, vérifier qu'il est bien le propriétaire de la réservation
     if (!$isAdmin && $userId && $reservation['user_id'] !== $userId) {
         http_response_code(403);
+        header('Content-Type: application/json');
         echo json_encode(['success' => false, 'message' => 'Vous n\'êtes pas autorisé à supprimer cette réservation']);
         exit;
     }
-
-    // Journaliser la suppression
-    error_log("Suppression de la réservation ID: $reservationId par " . ($isAdmin ? "admin" : "utilisateur: $userId"));
 
     // Supprimer la réservation
     $stmt = $pdo->prepare("DELETE FROM reservations WHERE id = ?");
     $stmt->execute([$reservationId]);
 
     if ($stmt->rowCount() > 0) {
-        error_log("Réservation ID: $reservationId supprimée avec succès");
+        header('Content-Type: application/json');
         echo json_encode([
             'success' => true, 
             'message' => 'Réservation supprimée avec succès',
@@ -87,17 +87,17 @@ try {
             ]
         ]);
     } else {
-        error_log("Échec de la suppression de la réservation ID: $reservationId");
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Échec de la suppression de la réservation']);
+        throw new Exception('Échec de la suppression de la réservation');
     }
 
 } catch (PDOException $e) {
     error_log("Erreur PDO lors de la suppression de la réservation: " . $e->getMessage());
     http_response_code(500);
+    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Erreur de base de données: ' . $e->getMessage()]);
 } catch (Exception $e) {
     error_log("Erreur lors de la suppression de la réservation: " . $e->getMessage());
     http_response_code(500);
+    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Erreur serveur: ' . $e->getMessage()]);
 } 

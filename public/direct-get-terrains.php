@@ -35,12 +35,14 @@ try {
     }
 
     // Connexion à la base de données
-    $host = $env['DB_HOST'];
-    $dbname = $env['DB_DATABASE'];
+    $host = $env['DB_HOST'] ?? '127.0.0.1';
+    $port = $env['DB_PORT'] ?? '3306';
+    $dbname = $env['DB_DATABASE'] ?? 'laravel';
     $username = $env['DB_USERNAME'] ?? 'root';
     $password = $env['DB_PASSWORD'] ?? '';
     
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
+    $pdo = new PDO($dsn, $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
     // Récupérer tous les terrains
@@ -64,10 +66,12 @@ try {
     // Journaliser l'erreur
     file_put_contents(__DIR__ . '/get-terrains-errors.txt', date('Y-m-d H:i:s') . " - Error: " . $e->getMessage() . "\n", FILE_APPEND);
     
-    // Renvoyer une réponse d'erreur
+    // Renvoyer une réponse d'erreur avec le code HTTP approprié
+    http_response_code(500);
     header('Content-Type: application/json');
     echo json_encode([
         'success' => false,
         'message' => 'Erreur lors de la récupération des terrains: ' . $e->getMessage()
     ]);
 } 
+?>
