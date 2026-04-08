@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import LoginPrompt from './LoginPrompt';
 import * as tournamentService from '../services/tournamentService';
+import { BASE_URL } from '../services/config';
 import './tournoi.css';
 
 function TournoiDetail({ user }) {
@@ -11,6 +12,14 @@ function TournoiDetail({ user }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [confirmationMessage, setConfirmationMessage] = useState('');
+
+    const getImageUrl = (imageUrl) => {
+        if (!imageUrl) return '/placeholder-tournament.jpg';
+        if (imageUrl.startsWith('/storage')) {
+            return `${BASE_URL}${imageUrl}`;
+        }
+        return imageUrl;
+    };
 
     useEffect(() => {
         const fetchTournament = async () => {
@@ -159,6 +168,11 @@ function TournoiDetail({ user }) {
                 </div>
             </div>
             
+            {/* Image du tournoi */}
+            <div className="tournoi-detail-banner">
+                <img src={getImageUrl(tournoi.image)} alt={tournoi.name} />
+            </div>
+
             {/* Contenu principal avec informations et équipes */}
             <div className="tournoi-detail-container">
                 <div className="tournoi-info-section">

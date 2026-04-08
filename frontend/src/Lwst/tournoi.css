@@ -239,6 +239,31 @@
   transform: translateX(-50%);
 }
 
+/* Banner Image for Detail Page */
+.tournoi-detail-banner {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 30px;
+  height: 400px;
+  overflow: hidden;
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--card-border);
+}
+
+.tournoi-detail-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 768px) {
+  .tournoi-detail-banner {
+    height: 250px;
+    margin-bottom: 20px;
+  }
+}
+
 .tournoi-card:hover .tournoi-title::after {
   width: 100%;
 }
