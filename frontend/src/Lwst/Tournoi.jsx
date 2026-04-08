@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import LoginPrompt from './LoginPrompt';
 import { Link } from 'react-router-dom';
 import * as tournamentService from '../services/tournamentService';
+import { BASE_URL } from '../services/config';
 import './tournoi.css';
 
 function Tournoi({ user }) {
