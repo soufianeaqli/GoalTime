@@ -229,7 +229,7 @@ function Tournoi({ user }) {
     const handleEditTournoi = async (e) => {
         e.preventDefault();
         try {
-            const response = await tournamentService.updateTournament(selectedTournoi.id, {
+            const responseData = await tournamentService.updateTournament(selectedTournoi.id, {
                 name: tournoiFormData.name,
                 date: tournoiFormData.date,
                 max_teams: tournoiFormData.maxTeams,
@@ -240,24 +240,18 @@ function Tournoi({ user }) {
                 image: tournoiFormData.image
             });
 
-            if (response.ok) {
-                const responseData = await response.json();
-                if (responseData.success) {
-                    setTournaments(tournaments.map(t => 
-                        t && t.id === selectedTournoi.id ? responseData.tournament : t
-                    ));
-                    handleCloseTournoiModal();
-                    setConfirmationMessage('Le tournoi a été mis à jour avec succès.');
-                    setTimeout(() => setConfirmationMessage(''), 5000);
-                } else {
-                    throw new Error(responseData.message || 'Échec de la mise à jour du tournoi');
-                }
+            if (responseData && responseData.success) {
+                setTournaments(tournaments.map(t => 
+                    t && t.id === selectedTournoi.id ? (responseData.tournament || responseData) : t
+                ));
+                handleCloseTournoiModal();
+                setConfirmationMessage('Le tournoi a été mis à jour avec succès.');
+                setTimeout(() => setConfirmationMessage(''), 5000);
             } else {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `Erreur serveur: ${response.status}`);
+                throw new Error((responseData && responseData.message) || 'Échec de la mise à jour du tournoi');
             }
         } catch (error) {
-            setError('Erreur lors de la modification du tournoi');
+            setError('Erreur lors de la modification du tournoi: ' + (error.message || ''));
             console.error('Error:', error);
         }
     };

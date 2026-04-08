@@ -70,10 +70,11 @@ export const createTournament = async (tournamentData) => {
             body: JSON.stringify(tournamentData)
         });
         
-        const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.message || 'Erreur lors de la création du tournoi');
+            const errText = await response.text();
+            throw new Error('Erreur lors de la création du tournoi: ' + response.status);
         }
+        const data = await response.json();
         return data.tournament || data;
     } catch (error) {
         console.error('Error creating tournament:', error);
@@ -96,10 +97,11 @@ export const updateTournament = async (id, tournamentData) => {
             body: JSON.stringify(dataWithId)
         });
         
-        const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.message || 'Erreur lors de la modification du tournoi');
+            const errText = await response.text();
+            throw new Error('Erreur lors de la modification du tournoi: ' + response.status);
         }
+        const data = await response.json();
         return data; // Contient success: true et le tournoi mis à jour
     } catch (error) {
         console.error('Error updating tournament:', error);
@@ -116,10 +118,11 @@ export const deleteTournament = async (id) => {
             }
         });
         
-        const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.message || 'Erreur lors de la suppression du tournoi');
+            const errText = await response.text();
+            throw new Error('Erreur lors de la suppression du tournoi: ' + response.status);
         }
+        await response.json();
         return true;
     } catch (error) {
         console.error('Error deleting tournament:', error);
