@@ -39,11 +39,16 @@ try {
         exit;
     }
 
-    // Vérifier l'ID de réservation
+    // Vérifier l'ID de réservation (peut venir du body JSON ou de l'URL)
     if (empty($data['id'])) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'ID de réservation manquant']);
-        exit;
+        // Essayer de le lire depuis l'URL (?id=...)
+        if (!empty($_GET['id']) && is_numeric($_GET['id'])) {
+            $data['id'] = (int)$_GET['id'];
+        } else {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'ID de réservation manquant']);
+            exit;
+        }
     }
 
     // Connexion à la base de données
@@ -94,13 +99,15 @@ try {
 
     // Champs qui peuvent être mis à jour
     $allowedFields = [
-        'name' => 'name',
-        'email' => 'email',
-        'date' => 'date',
-        'timeSlot' => 'time_slot',
-        'accepted' => 'accepted',
-        'rejected' => 'rejected',
-        'isPaid' => 'is_paid'
+        'name'      => 'name',
+        'email'     => 'email',
+        'date'      => 'date',
+        'timeSlot'  => 'time_slot',   // camelCase from frontend
+        'time_slot' => 'time_slot',   // snake_case alias
+        'accepted'  => 'accepted',
+        'rejected'  => 'rejected',
+        'isPaid'    => 'is_paid',     // camelCase from frontend
+        'is_paid'   => 'is_paid',     // snake_case alias
     ];
 
     foreach ($allowedFields as $requestField => $dbField) {
