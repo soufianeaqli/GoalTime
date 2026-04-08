@@ -54,6 +54,24 @@ try {
     $pdo = new PDO($dsn, $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
+    // AUTO-RÉPARATION DE LA BASE DE DONNÉES
+    // Vérifier si la colonne 'image' existe, sinon l'ajouter
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM tournaments LIKE 'image'");
+        if (!$stmt->fetch()) {
+            $pdo->exec("ALTER TABLE tournaments ADD COLUMN image VARCHAR(255) NULL AFTER entry_fee");
+        }
+        
+        // Vérifier également prize_pool (juste au cas où)
+        $stmt = $pdo->query("SHOW COLUMNS FROM tournaments LIKE 'prize_pool'");
+        if (!$stmt->fetch()) {
+            $pdo->exec("ALTER TABLE tournaments ADD COLUMN prize_pool VARCHAR(255) NULL AFTER registered_teams");
+        }
+    } catch (Exception $e) {
+        // On journalise mais on ne bloque pas si l'auto-réparation échoue (peut-être déjà fixée par un autre process)
+        error_log("Tentative d'auto-réparation échouée : " . $e->getMessage());
+    }
+    
     // Préparer les données pour l'insertion
     $name = htmlspecialchars(trim($data['name']));
     $date = $data['date'];
