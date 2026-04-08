@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as userService from '../services/userService';
-import './parametres.css';
 
 function Parametres({ user, setUser }) {
     const navigate = useNavigate();

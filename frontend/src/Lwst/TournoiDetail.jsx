@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import LoginPrompt from './LoginPrompt';
 import * as tournamentService from '../services/tournamentService';
 import { BASE_URL } from '../services/config';
-import './tournoi.css';
 
 function TournoiDetail({ user }) {
     const { id } = useParams();

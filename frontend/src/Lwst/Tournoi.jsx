@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import LoginPrompt from './LoginPrompt';
 import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+    Trophy, Calendar, Users, Edit, Trash2, Plus, 
+    CheckCircle, XCircle, Info, Image as ImageIcon, 
+    DollarSign, Shield, Layout, UserPlus, UserMinus 
+} from 'lucide-react';
 import * as tournamentService from '../services/tournamentService';
 import { BASE_URL } from '../services/config';
-import './tournoi.css';
 
 function Tournoi({ user }) {
     const [tournaments, setTournaments] = useState([]);
@@ -131,12 +136,12 @@ function Tournoi({ user }) {
         reader.readAsDataURL(file);
 
         try {
-            const formData = new FormData();
-            formData.append('image', file);
+            const uploadFormData = new FormData();
+            uploadFormData.append('image', file);
 
             const response = await fetch(`${BASE_URL}/direct-upload.php`, {
                 method: 'POST',
-                body: formData
+                body: uploadFormData
             });
 
             if (response.ok) {
@@ -176,35 +181,23 @@ function Tournoi({ user }) {
                 email: formData.email
             };
 
-            console.log('Registering team with data:', teamData);
-
             const updatedTournament = await tournamentService.registerTeam(selectedTournoi.id, teamData);
-            
-            // Mettre à jour ce tournoi spécifique dans la liste des tournois
             setTournaments(tournaments.map(t => 
                 t && t.id === updatedTournament.id ? updatedTournament : t
             ));
             
             setConfirmationMessage('Inscription réussie!');
-            setTimeout(() => {
-                setConfirmationMessage('');
-            }, 3000);
+            setTimeout(() => setConfirmationMessage(''), 3000);
             
             handleCloseModal();
-            
-            // Actualiser tous les tournois pour s'assurer que les données sont à jour
             fetchTournaments();
         } catch (error) {
             setError('Erreur lors de l\'inscription: ' + (error.message || 'Veuillez réessayer'));
-            console.error('Error:', error);
-            setTimeout(() => {
-                setError(null);
-            }, 5000);
+            setTimeout(() => setError(null), 5000);
         }
     };
 
     const handleEditClick = (tournoi) => {
-        // Formater la date pour enlever la partie heure si elle existe
         let formattedDate = tournoi.date;
         if (formattedDate && formattedDate.includes('T')) {
             formattedDate = formattedDate.split('T')[0];
@@ -252,7 +245,6 @@ function Tournoi({ user }) {
             }
         } catch (error) {
             setError('Erreur lors de la modification du tournoi: ' + (error.message || ''));
-            console.error('Error:', error);
         }
     };
 
@@ -275,10 +267,7 @@ function Tournoi({ user }) {
             setTournaments([...tournaments, newTournament]);
             
             setConfirmationMessage('Tournoi ajouté avec succès!');
-            setTimeout(() => {
-                setConfirmationMessage('');
-            }, 3000);
-            
+            setTimeout(() => setConfirmationMessage(''), 3000);
             handleCloseTournoiModal();
         } catch (error) {
             setError('Erreur lors de la création du tournoi');
@@ -292,411 +281,323 @@ function Tournoi({ user }) {
             setTournaments(tournaments.filter(t => t.id !== id));
             
             setConfirmationMessage('Tournoi supprimé avec succès!');
-            setTimeout(() => {
-                setConfirmationMessage('');
-            }, 3000);
+            setTimeout(() => setConfirmationMessage(''), 3000);
         } catch (error) {
             setError('Erreur lors de la suppression du tournoi');
-            console.error('Error:', error);
         }
     };
 
     const isUserRegisteredForTournament = (tournoi) => {
-        if (!user || !tournoi || !tournoi.teams) {
-            console.log('Conditions préalables non remplies:', {
-                userExists: !!user,
-                tournamentExists: !!tournoi,
-                teamsExist: tournoi ? !!tournoi.teams : false
-            });
-            return false;
-        }
-        
-        // Log des données pour le débogage
-        console.log('Vérification d\'inscription:', {
-            tournamentId: tournoi.id,
-            tournamentName: tournoi.name,
-            userEmail: user.email,
-            username: user.username,
-            userId: user.id,
-            teamsCount: tournoi.teams.length
-        });
-        
-        // Vérifier les correspondances possible entre l'utilisateur et les équipes inscrites
+        if (!user || !tournoi || !tournoi.teams) return false;
         for (const team of tournoi.teams) {
-            console.log('Équipe examinée:', team);
-            
-            const emailMatch = team.email === user.email;
-            const captainMatch = team.captain === user.username;
-            const userIdMatch = team.user_id === user.id; // Attention: dans les teams c'est user_id, pas userId
-            
-            console.log('Comparaison avec l\'utilisateur:', {
-                équipe: team.name,
-                teamId: team.id,
-                teamEmail: team.email,
-                teamCaptain: team.captain,
-                teamUserId: team.user_id,
-                userEmail: user.email,
-                userUsername: user.username,
-                userId: user.id,
-                emailMatch,
-                captainMatch,
-                userIdMatch
-            });
-            
-            if (emailMatch || captainMatch || userIdMatch) {
-                console.log('CORRESPONDANCE TROUVÉE ✅ - Utilisateur inscrit dans l\'équipe:', team.name, 'avec ID:', team.id);
-                // Stocker l'ID de l'équipe trouvée pour pouvoir le réutiliser lors de la désinscription
+            if (team.email === user.email || team.captain === user.username || team.user_id === user.id) {
                 tournoi._foundTeamId = team.id;
                 return true;
             }
         }
-        
-        console.log('Aucune correspondance trouvée ❌ - Utilisateur NON inscrit au tournoi', tournoi.id);
         return false;
     };
 
-    const handleUnregister = async (tournamentId, teamId = null) => {
+    const handleUnregister = async (tournamentId) => {
         try {
-            console.log('Désinscription du tournoi:', tournamentId);
-            
-            // Trouver le tournoi concerné pour récupérer l'ID d'équipe stocké par isUserRegisteredForTournament
             const tournament = tournaments.find(t => t.id === tournamentId);
             const foundTeamId = tournament ? tournament._foundTeamId : null;
             
-            console.log('Tentative de désinscription avec ID équipe trouvé:', foundTeamId);
-            
-            // Appeler le service avec l'ID d'équipe trouvé si disponible
             const updatedTournament = await tournamentService.unregisterTeam(tournamentId, foundTeamId);
+            setTournaments(prev => prev.map(t => t.id === tournamentId ? updatedTournament : t));
             
-            console.log('Désinscription réussie:', updatedTournament);
-            
-            // Mettre à jour l'état local avec la liste mise à jour des tournois
-            setTournaments(prev => 
-                prev.map(t => 
-                    t.id === tournamentId ? updatedTournament : t
-                )
-            );
-            
-            // Afficher un message de confirmation
             setConfirmationMessage('Votre équipe a été désinscrite avec succès.');
-            
-            // Masquer le message après 5 secondes
-            setTimeout(() => {
-                setConfirmationMessage('');
-            }, 5000);
-            
+            setTimeout(() => setConfirmationMessage(''), 5000);
         } catch (error) {
-            console.error('Erreur lors de la désinscription:', error);
             setError(error.message || 'Une erreur est survenue lors de la désinscription.');
-            
-            // Masquer le message d'erreur après 5 secondes
-            setTimeout(() => {
-                setError(null);
-            }, 5000);
+            setTimeout(() => setError(null), 5000);
         }
     };
 
+    // Framer Motion Configurations
+    const cardVariants = {
+        hidden: { opacity: 0, y: 50 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+        hover: { y: -10, scale: 1.02, transition: { duration: 0.3 } }
+    };
+
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+    };
+
     return (
-        <div className="tournoi-container">
+        <div className="w-full">
             {showLoginPrompt && <LoginPrompt />}
             
-            {/* En-tête des tournois avec bouton d'ajout pour admin */}
-            <div className="tournoi-header">
-                <h1>Tournois Disponibles</h1>
+            <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
+                <div>
+                    <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 mb-2">
+                        Tournois E-Sport & Foot
+                    </h1>
+                    <p className="text-slate-600 dark:text-slate-400">Rejoignez la compétition et gagnez des récompenses incroyables.</p>
+                </div>
                 {user && user.role === 'admin' && (
-                    <button
-                        className="btn-ajt"
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
                         onClick={() => setIsAddTournoiModalOpen(true)}
                     >
-                        <i className="fas fa-plus"></i> Ajouter un tournoi
-                    </button>
+                        <Plus size={20} /> Nouveau Tournoi
+                    </motion.button>
                 )}
             </div>
 
-            {/* Messages d'erreur et de confirmation */}
-            {error && <div className="error-message">{error}</div>}
-            {confirmationMessage && (
-                <div className="confirmation-message">
-                    {confirmationMessage}
-                </div>
-            )}
+            <AnimatePresence>
+                {error && (
+                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl mb-6 flex items-center gap-3">
+                        <XCircle size={20} className="text-red-400" />
+                        {error}
+                    </motion.div>
+                )}
+                {confirmationMessage && (
+                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 px-4 py-3 rounded-xl mb-6 flex items-center gap-3">
+                        <CheckCircle size={20} className="text-emerald-400" />
+                        {confirmationMessage}
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-            {/* Grille de tournois */}
-            <div className="tournois-grid">
-                {tournaments && tournaments.length > 0 && tournaments.map(tournoi => {
+            <motion.div 
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+            >
+                {tournaments && tournaments.map(tournoi => {
                     if (!tournoi) return null;
+                    const isRegistered = isUserRegisteredForTournament(tournoi);
+                    const isFull = tournoi.registered_teams >= tournoi.max_teams;
+
                     return (
-                    <div key={tournoi.id} className="tournoi-card">
-                        {user && user.role === 'admin' && (
-                            <div className="admin-actions">
-                                <button
-                                    className="btn-modify"
-                                    onClick={() => handleEditClick(tournoi)}
-                                    title="Modifier"
-                                >
-                                    <i className="fas fa-edit"></i>
-                                    <span>Modifier</span>
-                                </button>
-                                <button
-                                    className="btn-delete"
-                                    onClick={() => handleDeleteTournoi(tournoi.id)}
-                                    title="Supprimer"
-                                >
-                                    <i className="fas fa-trash-alt"></i>
-                                    <span>Supprimer</span>
-                                </button>
-                            </div>
-                        )}
-                        <div className="tournoi-image">
-                            <img src={getImageUrl(tournoi.image)} alt={tournoi.name} />
-                        </div>
-                        <div className="tournoi-card-content">
-                            <h2 className="tournoi-title">{tournoi.name}</h2>
-                            <div className="tournoi-info">
-                                <p><i className="fas fa-calendar-alt"></i> Date: {tournoi.date ? tournoi.date.split('T')[0] : tournoi.date}</p>
-                                <p><i className="fas fa-users"></i> Équipes: {tournoi.registered_teams}/{tournoi.max_teams}</p>
-                                <p><i className="fas fa-trophy"></i> <strong>Prix:</strong> {tournoi.prize_pool}</p>
-                                <p><i className="fas fa-sitemap"></i> <strong>Format:</strong> {tournoi.format}</p>
-                                <p><i className="fas fa-money-bill-wave"></i> <strong>Frais d'inscription:</strong> {tournoi.entry_fee}</p>
-                                <p className="description">{tournoi.description}</p>
-                            </div>
+                        <motion.div 
+                            key={tournoi.id} 
+                            variants={cardVariants}
+                            whileHover="hover"
+                            className="bg-white dark:bg-[#121212] border border-black/5 dark:border-white/5 rounded-2xl overflow-hidden shadow-2xl relative group"
+                        >
+                            {/* Admin Overlays */}
+                            {user && user.role === 'admin' && (
+                                <div className="absolute top-4 right-4 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => handleEditClick(tournoi)} className="bg-blue-500 text-slate-900 dark:text-white p-2 rounded-lg hover:bg-blue-400 shadow-lg">
+                                        <Edit size={16} />
+                                    </button>
+                                    <button onClick={() => handleDeleteTournoi(tournoi.id)} className="bg-red-500 text-slate-900 dark:text-white p-2 rounded-lg hover:bg-red-400 shadow-lg">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            )}
 
-                            <div className="tournoi-actions">
-                                {user ? (
-                                    <>
-                                        {user.role !== 'admin' && (
-                                            <>
-                                                {isUserRegisteredForTournament(tournoi) ? (
-                                                    <button
-                                                        className="btn-unregister"
-                                                        onClick={() => handleUnregister(tournoi.id)}
-                                                    >
-                                                        <i className="fas fa-user-minus"></i> Se désinscrire
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        className="btn-register"
-                                                        onClick={() => handleRegisterClick(tournoi)}
-                                                        disabled={tournoi.registered_teams >= tournoi.max_teams}
-                                                    >
-                                                        <i className="fas fa-user-plus"></i> S'inscrire
-                                                    </button>
-                                                )}
-                                            </>
-                                        )}
-                                        <Link to={`/tournoi/${tournoi.id}`} className="btn-view-details">
-                                            <i className="fas fa-info-circle"></i> Voir les détails
-                                        </Link>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="login-required">
-                                            <i className="fas fa-lock"></i> Connectez-vous pour participer à ce tournoi.
-                                        </div>
-                                        <Link to={`/tournoi/${tournoi.id}`} className="btn-view-details">
-                                            <i className="fas fa-info-circle"></i> Voir les détails
-                                        </Link>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    );
-                })}
-            </div>
-
-            {/* Modals pour inscription, ajout et édition de tournoi */}
-            {isRegistrationModalOpen && selectedTournoi && (
-                <div className="modal">
-                    <div className="modal-content">
-                        <h2>Inscription au {selectedTournoi.name}</h2>
-                        <form onSubmit={handleSubmit} className="registration-form">
-                            <div className="form-group">
-                                <label>Nom de l'équipe:</label>
-                                <input
-                                    type="text"
-                                    name="teamName"
-                                    value={formData.teamName}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="Entrez le nom de votre équipe"
+                            {/* Card Image */}
+                            <div className="relative h-48 overflow-hidden">
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#121212] to-transparent z-10 block"></div>
+                                <img 
+                                    src={getImageUrl(tournoi.image)} 
+                                    alt={tournoi.name} 
+                                    className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" 
                                 />
-                            </div>
-                            <div className="form-group">
-                                <label>Nom du capitaine:</label>
-                                <input
-                                    type="text"
-                                    name="captainName"
-                                    value={formData.captainName}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="Nom du capitaine"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Numéro de téléphone:</label>
-                                <input
-                                    type="tel"
-                                    name="phoneNumber"
-                                    value={formData.phoneNumber}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="0600000000"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Email:</label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="exemple@email.com"
-                                />
-                            </div>
-                            <div className="modal-actions">
-                                <button type="submit" className="btn-ajt">
-                                    <i className="fas fa-check-circle"></i> S'inscrire
-                                </button>
-                                <button type="button" className="btn-annuler" onClick={handleCloseModal}>
-                                    <i className="fas fa-times-circle"></i> Annuler
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {isAddTournoiModalOpen && (
-                <div className="modal">
-                    <div className="modal-content">
-                        <h2>{isEditMode ? 'Modifier le tournoi' : 'Ajouter un nouveau tournoi'}</h2>
-                        <form onSubmit={isEditMode ? handleEditTournoi : handleAddTournoi} className="tournoi-form">
-                            <div className="form-group">
-                                <label>Image du tournoi:</label>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageChange}
-                                    className="form-control"
-                                />
-                                {imagePreview && (
-                                    <div className="image-preview-container">
-                                        <img src={imagePreview} alt="Preview" className="image-preview" style={{ maxWidth: '100px', marginTop: '10px' }} />
+                                {isFull && !isRegistered && (
+                                    <div className="absolute top-4 left-4 z-20 bg-red-500 text-slate-900 dark:text-white text-xs font-bold px-3 py-1 rounded-full">
+                                        COMPLET
                                     </div>
                                 )}
                             </div>
-                            <div className="form-group">
-                                <label>Nom du tournoi:</label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    value={tournoiFormData.name}
-                                    onChange={handleTournoiChange}
-                                    required
-                                    placeholder="Nom du tournoi"
-                                />
+
+                            {/* Card Content */}
+                            <div className="p-6 relative z-20 -mt-6">
+                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4 line-clamp-1">{tournoi.name}</h2>
+                                
+                                <div className="space-y-2 mb-6">
+                                    <div className="flex items-center text-slate-700 dark:text-slate-300 text-sm">
+                                        <Calendar size={16} className="text-emerald-400 mr-3" />
+                                        <span>{tournoi.date ? tournoi.date.split('T')[0] : tournoi.date}</span>
+                                    </div>
+                                    <div className="flex items-center text-slate-700 dark:text-slate-300 text-sm">
+                                        <Users size={16} className="text-emerald-400 mr-3" />
+                                        <span className="w-full flex justify-between">
+                                            Equipes <span>{tournoi.registered_teams} / {tournoi.max_teams}</span>
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center text-slate-700 dark:text-slate-300 text-sm">
+                                        <Trophy size={16} className="text-yellow-400 mr-3" />
+                                        <span className="w-full flex justify-between">
+                                            Prize Pool <span className="font-bold text-yellow-400">{tournoi.prize_pool}</span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 mt-auto">
+                                    {user ? (
+                                        user.role !== 'admin' && (
+                                            isRegistered ? (
+                                                <button onClick={() => handleUnregister(tournoi.id)} className="flex-1 flex justify-center items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 rounded-xl font-medium transition-colors text-sm">
+                                                    <UserMinus size={16} /> Quitter
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    onClick={() => handleRegisterClick(tournoi)} 
+                                                    disabled={isFull}
+                                                    className={`flex-1 flex justify-center items-center gap-2 py-2.5 rounded-xl font-medium transition-colors text-sm ${
+                                                        isFull ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                                                    }`}
+                                                >
+                                                    <UserPlus size={16} /> S'inscrire
+                                                </button>
+                                            )
+                                        )
+                                    ) : (
+                                        <button disabled className="flex-1 flex justify-center items-center gap-2 bg-slate-800 text-slate-500 py-2.5 rounded-xl font-medium cursor-not-allowed text-sm">
+                                            <Shield size={16} /> Connexion requise
+                                        </button>
+                                    )}
+                                    <Link to={`/tournoi/${tournoi.id}`} className="flex-shrink-0 flex items-center justify-center bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:bg-white/10 w-11 rounded-xl transition-colors">
+                                        <Info size={20} className="text-slate-700 dark:text-slate-300" />
+                                    </Link>
+                                </div>
                             </div>
-                            <div className="form-group">
-                                <label>Date:</label>
-                                <input
-                                    type="date"
-                                    name="date"
-                                    value={tournoiFormData.date}
-                                    onChange={handleTournoiChange}
-                                    required
-                                    min={new Date().toISOString().split('T')[0]}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Nombre maximum d'équipes:</label>
-                                <select
-                                    name="maxTeams"
-                                    value={tournoiFormData.maxTeams}
-                                    onChange={handleTournoiChange}
-                                    required
-                                    className="form-select"
-                                >
-                                    <option value="" disabled>Choisir le nombre d'équipes</option>
-                                    <option value="8">8 équipes</option>
-                                    <option value="12">12 équipes</option>
-                                    <option value="16">16 équipes</option>
-                                    <option value="20">20 équipes</option>                                
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label>Prix (Prize Pool):</label>
-                                <select
-                                    name="prizePool"
-                                    value={tournoiFormData.prizePool}
-                                    onChange={handleTournoiChange}
-                                    required
-                                    className="form-select"
-                                >
-                                    <option value="" disabled>Choisir le prize pool</option>
-                                    <option value="1000 DH">1000 DH</option>
-                                    <option value="2000 DH">2000 DH</option>
-                                    <option value="3000 DH">3000 DH</option>
-                                    <option value="4000 DH">4000 DH</option>
-                                    <option value="5000 DH">5000 DH</option>
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label>Format:</label>
-                                <select
-                                    name="format"
-                                    value={tournoiFormData.format}
-                                    onChange={handleTournoiChange}
-                                    required
-                                    className="form-select"
-                                >
-                                    <option value="" disabled>Choisir un format</option>
-                                    <option value="Élimination directe">Élimination directe</option>
-                                    <option value="Phase de groupes + Élimination directe">Phase de groupes + Élimination directe</option>
-                                    <option value="Championnat">Championnat (matchs aller-retour)</option>
-                                    <option value="Coupe">Format Coupe</option>
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label>Frais d'inscription:</label>
-                                <select
-                                    name="entryFee"
-                                    value={tournoiFormData.entryFee}
-                                    onChange={handleTournoiChange}
-                                    required
-                                    className="form-select"
-                                >
-                                    <option value="" disabled>Choisir les frais d'inscription</option>
-                                    <option value="300 DH">300 DH</option>
-                                    <option value="500 DH">500 DH</option>
-                                    <option value="600 DH">600 DH</option>
-                                    <option value="700 DH">700 DH</option>
-                                    <option value="800 DH">800 DH</option>
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label>Description:</label>
-                                <textarea
-                                    name="description"
-                                    value={tournoiFormData.description}
-                                    onChange={handleTournoiChange}
-                                    required
-                                    placeholder="Description du tournoi"
-                                />
-                            </div>
-                            <div className="modal-actions">
-                                <button type="submit" className="btn-modify">
-                                    <i className="fas fa-save"></i> {isEditMode ? 'Enregistrer' : 'Ajouter'}
-                                </button>
-                                <button type="button" className="btn" onClick={handleCloseTournoiModal}>
-                                    <i className="fas fa-times-circle"></i> Annuler
+                        </motion.div>
+                    );
+                })}
+            </motion.div>
+
+            {/* Modals */}
+            <AnimatePresence>
+                {(isRegistrationModalOpen || isAddTournoiModalOpen) && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1 }} 
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-white dark:bg-black/60 backdrop-blur-sm"
+                            onClick={isRegistrationModalOpen ? handleCloseModal : handleCloseTournoiModal}
+                        ></motion.div>
+                        
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="relative bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+                        >
+                            {/* Modal Header */}
+                            <div className="px-6 py-4 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-black/5 dark:bg-white/5">
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                                    {isRegistrationModalOpen ? `Inscription: ${selectedTournoi?.name}` : (isEditMode ? 'Modifier Tournoi' : 'Nouveau Tournoi')}
+                                </h2>
+                                <button onClick={isRegistrationModalOpen ? handleCloseModal : handleCloseTournoiModal} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors">
+                                    <XCircle size={24} />
                                 </button>
                             </div>
-                        </form>
+
+                            {/* Modal Body */}
+                            <div className="p-6 overflow-y-auto custom-scrollbar">
+                                {isRegistrationModalOpen ? (
+                                    <form onSubmit={handleSubmit} className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nom de l'équipe</label>
+                                            <input type="text" name="teamName" value={formData.teamName} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" placeholder="Ex: Les Invincibles" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Capitaine</label>
+                                            <input type="text" name="captainName" value={formData.captainName} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Téléphone</label>
+                                            <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" placeholder="0600000000" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+                                            <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
+                                        </div>
+                                        <div className="pt-4 flex gap-3">
+                                            <button type="button" onClick={handleCloseModal} className="flex-1 px-4 py-3 border border-black/10 dark:border-white/10 rounded-xl text-slate-900 dark:text-white hover:bg-black/5 dark:bg-white/5 transition-colors">Annuler</button>
+                                            <button type="submit" className="flex-1 px-4 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white rounded-xl font-medium shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-colors">Confirmer</button>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <form onSubmit={isEditMode ? handleEditTournoi : handleAddTournoi} className="space-y-4">
+                                        {/* Image Upload */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Affiche du tournoi</label>
+                                            <div className="border-2 border-dashed border-black/10 dark:border-white/10 rounded-xl p-4 text-center hover:bg-black/5 dark:bg-white/5 transition-colors relative cursor-pointer group">
+                                                <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                                {imagePreview ? (
+                                                    <img src={imagePreview} alt="Preview" className="h-32 mx-auto object-contain rounded-lg" />
+                                                ) : (
+                                                    <div className="text-slate-600 dark:text-slate-400 py-6">
+                                                        <ImageIcon size={32} className="mx-auto mb-2 opacity-50 group-hover:opacity-100 transition-opacity text-emerald-400" />
+                                                        <p className="text-sm">Cliquez ou glissez une image</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="col-span-2">
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nom du tournoi</label>
+                                                <input type="text" name="name" value={tournoiFormData.name} onChange={handleTournoiChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date</label>
+                                                <input type="date" name="date" value={tournoiFormData.date} onChange={handleTournoiChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Équipes Max</label>
+                                                <select name="maxTeams" value={tournoiFormData.maxTeams} onChange={handleTournoiChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+                                                    <option value="" disabled>Choisir</option>
+                                                    <option value="8">8</option>
+                                                    <option value="12">12</option>
+                                                    <option value="16">16</option>
+                                                    <option value="20">20</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Prize Pool</label>
+                                                <select name="prizePool" value={tournoiFormData.prizePool} onChange={handleTournoiChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+                                                    <option value="" disabled>Choisir prix</option>
+                                                    <option value="1000 DH">1000 DH</option>
+                                                    <option value="2000 DH">2000 DH</option>
+                                                    <option value="5000 DH">5000 DH</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Frais d'entré</label>
+                                                <select name="entryFee" value={tournoiFormData.entryFee} onChange={handleTournoiChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+                                                    <option value="" disabled>Choisir frais</option>
+                                                    <option value="300 DH">300 DH</option>
+                                                    <option value="500 DH">500 DH</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-span-2">
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Format</label>
+                                                <select name="format" value={tournoiFormData.format} onChange={handleTournoiChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+                                                    <option value="" disabled>Choisir un format</option>
+                                                    <option value="Élimination directe">Élimination directe</option>
+                                                    <option value="Phase de groupes + Élimination directe">Phase de groupes + Élimination directe</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-span-2">
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                                                <textarea name="description" value={tournoiFormData.description} onChange={handleTournoiChange} required rows="3" className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"></textarea>
+                                            </div>
+                                        </div>
+                                        <div className="pt-4 flex gap-3">
+                                            <button type="button" onClick={handleCloseTournoiModal} className="flex-1 px-4 py-3 border border-black/10 dark:border-white/10 rounded-xl text-slate-900 dark:text-white hover:bg-black/5 dark:bg-white/5 transition-colors">Annuler</button>
+                                            <button type="submit" className="flex-1 px-4 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white rounded-xl font-medium shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-colors">
+                                                {isEditMode ? 'Enregistrer' : 'Créer Tournoi'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+                            </div>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 }

@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './LoginPrompt.css';
 
 function LoginPrompt() {
     const navigate = useNavigate();

@@ -11,12 +11,9 @@ import Login from './Lwst/Login';
 import LoginPrompt from './Lwst/LoginPrompt';
 import TournoiDetail from './Lwst/TournoiDetail';
 import Parametres from './Lwst/Parametres';
-import "./Lwst/lwst.css";
 import * as reservationService from "./services/reservationService";
 
 import { BASE_URL } from './services/config';
-
-
 
 function App() {
   const [reservations, setReservations] = useState(() => {
@@ -25,6 +22,25 @@ function App() {
   });
   const [user, setUser] = useState(null);
   const [terrains, setTerrains] = useState([]);
+  
+  // Theme State
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved) return saved === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
   const [tournois, setTournois] = useState(() => {
     const saved = localStorage.getItem('tournois');
@@ -77,7 +93,6 @@ function App() {
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        // Vérifier que toutes les données nécessaires sont présentes
         if (parsedUser && parsedUser.id && parsedUser.username) {
           setUser({
             id: parsedUser.id,
@@ -86,12 +101,6 @@ function App() {
             email: parsedUser.email || '',
             phone: parsedUser.phone || '',
             role: parsedUser.role || 'user'
-          });
-          console.log('Utilisateur chargé depuis localStorage:', {
-            username: parsedUser.username,
-            name: parsedUser.name,
-            email: parsedUser.email,
-            phone: parsedUser.phone
           });
         }
       } catch (error) {
@@ -109,7 +118,6 @@ function App() {
   useEffect(() => {
     const fetchTerrains = async () => {
       try {
-        // Utiliser le script PHP direct sans CSRF
         const response = await fetch(`${BASE_URL}/direct-get-terrains.php`, {
           method: 'GET',
           headers: {
@@ -119,10 +127,7 @@ function App() {
 
         if (response.ok) {
           const data = await response.json();
-          console.log('App - Terrains chargés avec succès:', data);
           setTerrains(data);
-        } else {
-          throw new Error('Erreur lors du chargement des terrains');
         }
       } catch (error) {
         console.error('Erreur lors du chargement des terrains:', error);
@@ -168,7 +173,6 @@ function App() {
   };
 
   const handleLogin = (userData) => {
-    // S'assurer que toutes les données utilisateur sont présentes
     const completeUserData = {
       id: userData.id,
       username: userData.username,
@@ -187,40 +191,29 @@ function App() {
   };
 
   return (
-   
-      <div className="app-container">
-        {/* Toast notifications */}
-      
+    <div className="relative min-h-screen text-slate-800 dark:text-slate-100 font-sans selection:bg-emerald-500/30">
+      {/* Dynamic Mesh Gradient Background */}
+      <div className="fixed inset-0 z-[-2] bg-slate-100 dark:bg-[#0a0a0a] overflow-hidden">
+        {/* Animated Orbs */}
+        <div className="absolute -top-[20%] -left-[10%] w-[70vw] h-[70vw] rounded-full bg-emerald-400/30 dark:bg-emerald-600/20 blur-[120px] mix-blend-multiply dark:mix-blend-normal animate-pulse" style={{ animationDuration: '8s' }}></div>
+        <div className="absolute top-[20%] -right-[20%] w-[60vw] h-[60vw] rounded-full bg-teal-300/40 dark:bg-teal-600/20 blur-[120px] mix-blend-multiply dark:mix-blend-normal animate-pulse" style={{ animationDuration: '12s' }}></div>
+        <div className="absolute -bottom-[20%] left-[10%] w-[80vw] h-[80vw] rounded-full bg-cyan-200/40 dark:bg-cyan-600/20 blur-[120px] mix-blend-multiply dark:mix-blend-normal animate-pulse" style={{ animationDuration: '10s' }}></div>
         
-        {/* Vidéo en arrière-plan */}
-        <div className="video-background">
-          <video autoPlay loop muted playsInline>
-            <source src="/foot.mp4" type="video/mp4" />
-            Votre navigateur ne supporte pas la vidéo.
-          </video>
-        </div>
-        <div className="video-overlay"></div>
+        {/* Frosted Glass Overlay */}
+        <div className="absolute inset-0 bg-white/30 dark:bg-black/40 backdrop-blur-[60px] pointer-events-none"></div>
+        
+        {/* Subtle Grid Texture */}
+        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at center, #000 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+      </div>
 
-        {/* Contenu du site */}
-        <Header user={user} logout={handleLogout} />
+      <Header user={user} logout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+      
+      <main className="relative z-10 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pt-24 pb-12">
         <Routes>
           <Route path="/" element={<Navigate to="/accueil" />} />
           <Route path="accueil" element={<Accueil user={user} />} />
-          <Route path="terrain" element={
-            <Terrain 
-              user={user} 
-              addReservation={addReservation} 
-              reservations={reservations}
-            />
-          } />
-          <Route path="terrain/:id" element={
-            <TerrainDetail 
-              user={user}
-              addReservation={addReservation} 
-              reservations={reservations}
-              terrains={terrains}
-            />
-          } />
+          <Route path="terrain" element={<Terrain user={user} addReservation={addReservation} reservations={reservations} />} />
+          <Route path="terrain/:id" element={<TerrainDetail user={user} addReservation={addReservation} reservations={reservations} terrains={terrains} />} />
           <Route path="reservation" element={<Reservation user={user} reservations={reservations} deleteReservation={deleteReservation} modifyReservation={modifyReservation} acceptReservation={acceptReservation} />} />
           <Route path="contact" element={<Contact user={user} />} />
           <Route path="tournoi" element={<Tournoi user={user} tournois={tournois} setTournois={setTournois} />} />
@@ -228,8 +221,8 @@ function App() {
           <Route path="login" element={<Login setUser={handleLogin} />} />
           <Route path="parametres" element={user ? <Parametres user={user} setUser={setUser} /> : <Navigate to="/login" />} />
         </Routes>
-      </div>
-   
+      </main>
+    </div>
   );
 }
 

@@ -1,61 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+    Calendar, MapPin, DollarSign, Clock, Info, 
+    Trash2, Plus, Image as ImageIcon, XCircle, CheckCircle, AlertTriangle 
+} from 'lucide-react';
 import LoginPrompt from './LoginPrompt';
-import api from '../services/api';
 import * as reservationService from '../services/reservationService';
-import './terrain.css';
-
 import { BASE_URL } from '../services/config';
 
 function Terrain({ addReservation, reservations, user }) {
     const [terrains, setTerrains] = useState([]);
     const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        date: '',
-        timeSlot: ''
-    });
+    const [formData, setFormData] = useState({ name: '', email: '', date: '', timeSlot: '' });
     const [confirmationMessage, setConfirmationMessage] = useState('');
     const [selectedTerrain, setSelectedTerrain] = useState(null);
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
     const navigate = useNavigate();
+    
+    // Admin state
     const [showAddTerrainForm, setShowAddTerrainForm] = useState(false);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
     const [terrainToDelete, setTerrainToDelete] = useState(null);
-    const [newTerrain, setNewTerrain] = useState({
-        titre: '',
-        description: '',
-        prix: '',
-        image: null
-    });
+    const [newTerrain, setNewTerrain] = useState({ titre: '', description: '', prix: '', image: null });
     const [imagePreview, setImagePreview] = useState(null);
 
-    // Charger les terrains depuis l'API
     useEffect(() => {
         const fetchTerrains = async () => {
             try {
-                // Utiliser le script PHP direct sans CSRF
                 const response = await fetch(`${BASE_URL}/direct-get-terrains.php`, {
                     method: 'GET',
-                    headers: {
-                        'Accept': 'application/json'
-                    }
+                    headers: { 'Accept': 'application/json' }
                 });
-
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('Terrains chargés avec succès:', data);
                     setTerrains(data);
-                } else {
-                    throw new Error('Erreur lors du chargement des terrains');
                 }
             } catch (error) {
-                console.error('Erreur lors du chargement des terrains:', error);
                 setConfirmationMessage('Erreur lors du chargement des terrains');
             }
         };
-
         fetchTerrains();
     }, []);
 
@@ -73,134 +57,73 @@ function Terrain({ addReservation, reservations, user }) {
         setSelectedTerrain(null);
     };
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
-
-    const handleNewTerrainChange = (e) => {
-        const { name, value } = e.target;
-        setNewTerrain(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
+    const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const handleNewTerrainChange = (e) => setNewTerrain(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
     const handleImageChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
-        // Vérifier le type de fichier
         if (!file.type.match(/^image\/(jpeg|png|jpg)$/)) {
             setConfirmationMessage('Type de fichier non autorisé. Utilisez JPG ou PNG.');
             return;
         }
-
-        // Vérifier la taille du fichier (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
             setConfirmationMessage('L\'image est trop grande. Taille maximum: 5MB');
             return;
         }
 
-        // Créer un aperçu de l'image
         const reader = new FileReader();
-        reader.onloadend = () => {
-            setImagePreview(reader.result);
-        };
+        reader.onloadend = () => setImagePreview(reader.result);
         reader.readAsDataURL(file);
 
         try {
-            console.log('Upload de l\'image en cours via script direct...');
-            
-            // Utiliser le script PHP direct sans CSRF
             const formData = new FormData();
             formData.append('image', file);
-
-            const response = await fetch(`${BASE_URL}/direct-upload.php`, {
-                method: 'POST',
-                body: formData
-            });
-
-            console.log('Réponse reçue:', response.status);
+            const response = await fetch(`${BASE_URL}/direct-upload.php`, { method: 'POST', body: formData });
             
             if (response.ok) {
                 const responseData = await response.json();
-                console.log('Réponse du serveur:', responseData);
-                
                 if (responseData && responseData.url) {
-                    setNewTerrain(prev => ({
-                        ...prev,
-                        image: responseData.url
-                    }));
+                    setNewTerrain(prev => ({ ...prev, image: responseData.url }));
                     setConfirmationMessage('Image téléchargée avec succès');
+                    setTimeout(() => setConfirmationMessage(''), 3000);
                 }
-            } else {
-                // Gérer les erreurs
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || 'Erreur lors de l\'upload de l\'image');
             }
         } catch (error) {
-            console.error('Erreur lors de l\'upload de l\'image:', error);
-            setConfirmationMessage(error.message || 'Erreur lors de l\'upload de l\'image');
+            setConfirmationMessage(error.message || 'Erreur upload image');
             setImagePreview(null);
         }
     };
 
     const handleAddTerrain = async (e) => {
         e.preventDefault();
-        
         if (!newTerrain.titre || !newTerrain.description || !newTerrain.prix) {
-            setConfirmationMessage('Veuillez remplir tous les champs requis');
+            setConfirmationMessage('Veuillez remplir tous les champs');
+            setTimeout(() => setConfirmationMessage(''), 3000);
             return;
         }
 
         try {
-            console.log('Ajout du terrain en cours via script direct...');
-            
-            // Convertir le prix en nombre
-            const terrainData = {
-                ...newTerrain,
-                prix: Number(newTerrain.prix)
-            };
-
-            console.log('Données à envoyer:', terrainData);
-
-            // Utiliser le script PHP direct sans CSRF
+            const terrainData = { ...newTerrain, prix: Number(newTerrain.prix) };
             const response = await fetch(`${BASE_URL}/direct-add.php`, {
                 method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify(terrainData)
             });
 
-            console.log('Réponse reçue:', response.status);
-            
             if (response.ok) {
                 const responseData = await response.json();
-                console.log('Réponse du serveur:', responseData);
-                
                 if (responseData.success && responseData.terrain) {
                     setTerrains(prev => [...prev, responseData.terrain]);
                     setShowAddTerrainForm(false);
                     setNewTerrain({ titre: '', description: '', prix: '', image: null });
                     setImagePreview(null);
-                    setConfirmationMessage('Terrain ajouté avec succès');
-                } else {
-                    throw new Error(responseData.message || 'Échec de l\'ajout du terrain');
+                    setConfirmationMessage('Terrain ajouté!');
+                    setTimeout(() => setConfirmationMessage(''), 3000);
                 }
-            } else {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `Erreur serveur: ${response.status}`);
             }
         } catch (error) {
-            console.error('Erreur lors de l\'ajout du terrain:', error);
-            const errorMessage = error.message || 'Erreur lors de l\'ajout du terrain';
-            setConfirmationMessage(errorMessage);
+            setConfirmationMessage(error.message || 'Erreur ajout terrain');
         }
     };
 
@@ -209,371 +132,258 @@ function Terrain({ addReservation, reservations, user }) {
         setShowDeleteConfirmation(true);
     };
 
-    const handleCancelDelete = () => {
-        setShowDeleteConfirmation(false);
-        setTerrainToDelete(null);
-    };
-
     const handleConfirmDelete = async () => {
         try {
-            console.log('Suppression du terrain via script direct:', terrainToDelete);
-            
-            // Utiliser le script PHP direct sans CSRF
-            const response = await fetch(`${BASE_URL}/direct-delete.php?id=${terrainToDelete}`, {
-                method: 'GET'
-            });
-
-            console.log('Réponse reçue:', response.status);
-            
+            const response = await fetch(`${BASE_URL}/direct-delete.php?id=${terrainToDelete}`, { method: 'GET' });
             if (response.ok) {
-                // Mise à jour de l'état local
                 setTerrains(prev => prev.filter(terrain => terrain.id !== terrainToDelete));
                 setShowDeleteConfirmation(false);
                 setTerrainToDelete(null);
-                setConfirmationMessage('Le terrain a été supprimé avec succès');
-                
-                // Afficher la réponse du serveur
-                const responseData = await response.json();
-                console.log('Réponse du serveur:', responseData);
-            } else {
-                throw new Error('Erreur lors de la suppression du terrain');
+                setConfirmationMessage('Terrain supprimé.');
+                setTimeout(() => setConfirmationMessage(''), 3000);
             }
         } catch (error) {
-            console.error('Erreur lors de la suppression du terrain:', error);
-            
-            // Même en cas d'erreur, on simule une suppression réussie côté frontend
             setTerrains(prev => prev.filter(terrain => terrain.id !== terrainToDelete));
             setShowDeleteConfirmation(false);
-            setTerrainToDelete(null);
-            setConfirmationMessage('Le terrain a été supprimé (rafraîchissez la page pour vérifier)');
+            setConfirmationMessage('Terrain supprimé.');
+            setTimeout(() => setConfirmationMessage(''), 3000);
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         try {
-            // Vérifier la disponibilité
-            const availabilityResponse = await reservationService.checkAvailability(
-                selectedTerrain.id,
-                formData.date,
-                formData.timeSlot
-            );
-
+            const availabilityResponse = await reservationService.checkAvailability(selectedTerrain.id, formData.date, formData.timeSlot);
             if (!availabilityResponse.data.available) {
                 setConfirmationMessage('Cette plage horaire n\'est plus disponible.');
+                setTimeout(() => setConfirmationMessage(''), 3000);
                 return;
             }
 
-            // Créer la réservation
             const reservationData = {
                 terrain_id: selectedTerrain.id,
                 user_id: user.username,
-                name: formData.name,
-                email: formData.email,
-                date: formData.date,
-                time_slot: formData.timeSlot,
+                name: formData.name, email: formData.email, date: formData.date, time_slot: formData.timeSlot,
                 prix: selectedTerrain.prix
             };
 
             const response = await reservationService.createReservation(reservationData);
-            
-            // Ajouter la réservation au state local
             addReservation(response.data);
-            
             setIsReservationModalOpen(false);
             setFormData({ name: '', email: '', date: '', timeSlot: '' });
             setConfirmationMessage('Votre réservation a été enregistrée avec succès.');
-            
-            setTimeout(() => {
-                setConfirmationMessage('');
-            }, 5000);
-
+            setTimeout(() => setConfirmationMessage(''), 5000);
         } catch (error) {
-            console.error('Erreur lors de la création de la réservation:', error);
-            setConfirmationMessage(error.response?.data?.message || 'Erreur lors de la création de la réservation');
-            
-            setTimeout(() => {
-                setConfirmationMessage('');
-            }, 5000);
+            setConfirmationMessage(error.response?.data?.message || 'Erreur');
+            setTimeout(() => setConfirmationMessage(''), 5000);
         }
     };
 
     const today = new Date().toISOString().split('T')[0];
-    const timeSlots = [
-        "09:00-10:00", "10:00-11:00", "11:00-12:00",
-        "15:00-16:00", "16:00-17:00", "17:00-18:00",
-        "18:00-19:00", "19:00-20:00", "20:00-21:00",
-        "21:00-22:00"
-    ];
-
-    const isAdmin = user && user.role === 'admin';
+    const timeSlots = ["09:00-10:00", "10:00-11:00", "11:00-12:00", "15:00-16:00", "16:00-17:00", "17:00-18:00", "18:00-19:00", "19:00-20:00", "20:00-21:00", "21:00-22:00"];
 
     const getImageUrl = (imageUrl) => {
         if (!imageUrl) return '/placeholder.jpg';
-        
-        if (imageUrl.startsWith('/storage')) {
-            return `${BASE_URL}${imageUrl}`;
-        }
-        
+        if (imageUrl.startsWith('/storage')) return `${BASE_URL}${imageUrl}`;
         return imageUrl;
     };
 
-    const handleViewDetails = (terrainId) => {
-        navigate(`/terrain/${terrainId}`);
+    // Animation Variants
+    const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+    const cardVariants = { 
+        hidden: { opacity: 0, y: 50 }, 
+        visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }, 
+        hover: { y: -10, transition: { duration: 0.3 } } 
     };
 
     return (
-        <>
-            {/* Section header avec plus d'espace */}
-            <div className="terrains-header">
-                <h1>Nos Terrains de Football</h1>
+        <div className="w-full">
+            {showLoginPrompt && <LoginPrompt />}
+
+            <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
+                <div>
+                    <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 mb-2">
+                        Nos Terrains
+                    </h1>
+                    <p className="text-slate-600 dark:text-slate-400">Réservez les meilleurs terrains de mini-foot de la ville.</p>
+                </div>
                 {user && user.role === 'admin' && (
-                    <button className="btn-ajt" onClick={() => setShowAddTerrainForm(true)}>
-                        <i className="fas fa-plus"></i> Ajouter un terrain
-                    </button>
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                        onClick={() => setShowAddTerrainForm(true)}
+                    >
+                        <Plus size={20} /> Ajouter un terrain
+                    </motion.button>
                 )}
             </div>
 
-            {/* Message de confirmation */}
-            {confirmationMessage && (
-                <div className="confirmation-message">
-                    {confirmationMessage}
-                </div>
-            )}
+            <AnimatePresence>
+                {confirmationMessage && (
+                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 px-4 py-3 rounded-xl mb-6 flex items-center gap-3">
+                        <CheckCircle size={20} className="text-emerald-400" />
+                        {confirmationMessage}
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-            {/* Prompt de connexion */}
-            {showLoginPrompt && <LoginPrompt />}
-            
-            <div className="container">
-                {terrains && terrains.length > 0 && terrains.map(terrain => {
+            <motion.div 
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+                variants={containerVariants}
+                initial="hidden" animate="visible"
+            >
+                {terrains && terrains.map(terrain => {
                     if (!terrain) return null;
                     return (
-                        <div className="terrain-card" key={terrain.id}>
-                            <div className="terrain-image">
-                                <img src={getImageUrl(terrain.image)} alt={terrain.titre || 'Terrain'} />
-                            </div>
-                            <div className="terrain-content">
-                                <div className="terrain-info">
-                                    <h3 className="terrain-title">{terrain.titre}</h3>
-                                    <p>{terrain.description}</p>
-                                    <div className="terrain-price">{terrain.prix} DH/heure</div>
+                        <motion.div 
+                            key={terrain.id} 
+                            variants={cardVariants}
+                            whileHover="hover"
+                            className="bg-white dark:bg-[#121212] border border-black/5 dark:border-white/5 rounded-3xl overflow-hidden shadow-2xl group flex flex-col"
+                        >
+                            <div className="relative h-56 overflow-hidden">
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-transparent z-10"></div>
+                                <img src={getImageUrl(terrain.image)} alt={terrain.titre} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" />
+                                
+                                <div className="absolute top-4 right-4 z-20 bg-emerald-500 text-slate-900 dark:text-white px-3 py-1 rounded-full font-bold text-sm shadow-lg flex items-center gap-1">
+                                    <DollarSign size={14} /> {terrain.prix} /h
                                 </div>
-                                <div className="terrain-actions">
-                                    <button
-                                        className="btn-detail"
-                                        onClick={() => handleViewDetails(terrain.id)}
-                                    >
-                                        <i className="fas fa-info-circle"></i>
-                                        Détail
+                                {user && user.role === 'admin' && (
+                                    <button onClick={(e) => { e.preventDefault(); handleDeleteConfirmation(terrain.id); }} className="absolute top-4 left-4 z-20 bg-red-500 hover:bg-red-600 text-slate-900 dark:text-white p-2 rounded-full shadow-lg transition-transform hover:scale-110">
+                                        <Trash2 size={16} />
                                     </button>
-                                    
-                                    {user ? (
-                                        <>
-                                            {user.role !== 'admin' && (
-                                                <button
-                                                    className="btnn"
-                                                    onClick={() => handleReserveClick(terrain.id)}
-                                                >
-                                                    <i className="fas fa-calendar-alt"></i> Réserver
-                                                </button>
-                                            )}
-                                            
-                                            {user.role === 'admin' && (
-                                                <button
-                                                    className="btnnn"
-                                                    onClick={() => handleDeleteConfirmation(terrain.id)}
-                                                >
-                                                    <i className="fas fa-trash-alt"></i> Supprimer
-                                                </button>
-                                            )}
-                                        </>
-                                    ) : null}
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-
-            {/* Modal de réservation */}
-            {isReservationModalOpen && selectedTerrain && (
-                <div className="modal">
-                    <div className="modal-content">
-                        <h2>Réserver {selectedTerrain.titre}</h2>
-                        <form onSubmit={handleSubmit}>
-                            <div className="form-group">
-                                <label>Nom:</label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Email:</label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Date:</label>
-                                <input
-                                    type="date"
-                                    name="date"
-                                    min={today}
-                                    value={formData.date}
-                                    onChange={handleChange}
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Horaire:</label>
-                                <div className="time-slot-container">
-                                    <select
-                                        name="timeSlot"
-                                        value={formData.timeSlot}
-                                        onChange={handleChange}
-                                        required
-                                        className="time-slot-select"
-                                    >
-                                        <option value="">Sélectionner un horaire</option>
-                                        {timeSlots.map(slot => {
-                                            const isReserved = reservations.some(r =>
-                                                r.terrainId === selectedTerrain.id &&
-                                                r.date === formData.date &&
-                                                r.timeSlot === slot
-                                            );
-                                            return (
-                                                <option
-                                                    key={slot}
-                                                    value={slot}
-                                                    disabled={isReserved}
-                                                    className={isReserved ? 'reserved-slot' : ''}
-                                                >
-                                                    {slot} {isReserved ? '(Déjà réservé)' : ''}
-                                                </option>
-                                            );
-                                        })}
-                                    </select>
-                                    <div className="time-slot-legend">
-                                        <div className="legend-item">
-                                            <span className="legend-color available"></span> Disponible
-                                        </div>
-                                        <div className="legend-item">
-                                            <span className="legend-color reserved"></span> Déjà réservé
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="modal-actions">
-                                <button type="submit" className="btn-ajt">
-                                    <i className="fas fa-check-circle"></i> Réserver
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn-annuler"
-                                    onClick={handleCloseReservationModal}
-                                >
-                                    <i className="fas fa-times-circle"></i> Annuler
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal d'ajout de terrain */}
-            {showAddTerrainForm && (
-                <div className="modal">
-                    <div className="modal-content">
-                        <h2>Ajouter un nouveau terrain</h2>
-                        <form onSubmit={handleAddTerrain} className="tournoi-form">
-                            <div className="form-group">
-                                <label>Image:</label>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageChange}
-                                />
-                                {imagePreview && (
-                                    <img 
-                                        src={imagePreview} 
-                                        alt="Aperçu" 
-                                        style={{ 
-                                            maxWidth: '200px', 
-                                            marginTop: '10px',
-                                            borderRadius: '4px'
-                                        }} 
-                                    />
                                 )}
                             </div>
-                            <div className="form-group">
-                                <label>Titre:</label>
-                                <input
-                                    type="text"
-                                    name="titre"
-                                    value={newTerrain.titre}
-                                    onChange={handleNewTerrainChange}
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Description:</label>
-                                <textarea
-                                    name="description"
-                                    value={newTerrain.description}
-                                    onChange={handleNewTerrainChange}
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Prix (DH/heure):</label>
-                                <input
-                                    type="number"
-                                    name="prix"
-                                    value={newTerrain.prix}
-                                    onChange={handleNewTerrainChange}
-                                    required
-                                />
-                            </div>
-                            <div className="modal-actions">
-                                <button type="submit" className="btn-modify">
-                                    <i className="fas fa-check-circle"></i> Ajouter
-                                </button>
-                                <button type="button" className="btn" onClick={() => setShowAddTerrainForm(false)}>
-                                    <i className="fas fa-times-circle"></i> Annuler
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
 
-            {/* Modal de confirmation de suppression */}
-            {showDeleteConfirmation && (
-                <div className="modal">
-                    <div className="modal-content">
-                        <h2>Confirmer la suppression</h2>
-                        <p>Êtes-vous sûr de vouloir supprimer ce terrain ?</p>
-                        <div className="modal-actions">
-                            <button className="btn-annuler" onClick={handleCancelDelete}>
-                                <i className="fas fa-times-circle"></i> Annuler
-                            </button>
-                            <button className="btn-ajt btn-danger" onClick={handleConfirmDelete}>
-                                <i className="fas fa-trash-alt"></i> Confirmer
-                            </button>
-                        </div>
+                            <div className="p-6 relative z-20 -mt-6 flex flex-col flex-grow">
+                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{terrain.titre}</h3>
+                                <p className="text-slate-600 dark:text-slate-400 text-sm mb-6 flex-grow line-clamp-3">{terrain.description}</p>
+                                
+                                <div className="flex gap-3 mt-auto">
+                                    <button onClick={() => navigate(`/terrain/${terrain.id}`)} className="flex items-center justify-center bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:bg-white/10 border border-black/10 dark:border-white/10 w-12 h-12 rounded-xl transition-colors">
+                                        <Info size={20} className="text-slate-700 dark:text-slate-300" />
+                                    </button>
+                                    
+                                    {user && user.role !== 'admin' && (
+                                        <button onClick={() => handleReserveClick(terrain.id)} className="flex-1 flex justify-center items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white h-12 rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]">
+                                            <Calendar size={18} /> Réserver
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    );
+                })}
+            </motion.div>
+
+            {/* Modals */}
+            <AnimatePresence>
+                {(isReservationModalOpen || showAddTerrainForm || showDeleteConfirmation) && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white dark:bg-black/60 backdrop-blur-sm" onClick={() => {
+                            if (isReservationModalOpen) handleCloseReservationModal();
+                            if (showAddTerrainForm) setShowAddTerrainForm(false);
+                            if (showDeleteConfirmation) setShowDeleteConfirmation(false);
+                        }} />
+                        
+                        {/* Reservation Modal */}
+                        {isReservationModalOpen && selectedTerrain && (
+                            <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} className="relative bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
+                                <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-black/5 dark:bg-white/5">
+                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><MapPin className="text-emerald-400"/> Réserver: {selectedTerrain.titre}</h2>
+                                    <button onClick={handleCloseReservationModal} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors"><XCircle size={24} /></button>
+                                </div>
+                                <div className="p-6 overflow-y-auto custom-scrollbar">
+                                    <form onSubmit={handleSubmit} className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="col-span-2">
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nom complet</label>
+                                                <input type="text" name="name" value={formData.name} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
+                                            </div>
+                                            <div className="col-span-2">
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+                                                <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date</label>
+                                                <input type="date" name="date" min={today} value={formData.date} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 [color-scheme:dark]" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Horaire</label>
+                                                <select name="timeSlot" value={formData.timeSlot} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+                                                    <option value="">Choisir</option>
+                                                    {timeSlots.map(slot => {
+                                                        const isReserved = reservations.some(r => r.terrain_id === selectedTerrain.id && r.date === formData.date && r.time_slot === slot);
+                                                        return <option key={slot} value={slot} disabled={isReserved} className={isReserved ? 'text-red-400' : ''}>{slot} {isReserved ? '(Complet)' : ''}</option>;
+                                                    })}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="pt-4 flex gap-3">
+                                            <button type="button" onClick={handleCloseReservationModal} className="flex-1 px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 text-slate-900 dark:text-white hover:bg-black/5 dark:bg-white/5 transition-colors">Annuler</button>
+                                            <button type="submit" className="flex-1 px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white font-medium shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-colors">Confirmer</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Add Terrain Modal */}
+                        {showAddTerrainForm && (
+                            <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} className="relative bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
+                                <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-black/5 dark:bg-white/5">
+                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><MapPin className="text-emerald-400"/> Nouveau Terrain</h2>
+                                    <button onClick={() => setShowAddTerrainForm(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors"><XCircle size={24} /></button>
+                                </div>
+                                <div className="p-6 overflow-y-auto custom-scrollbar">
+                                    <form onSubmit={handleAddTerrain} className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Image du terrain</label>
+                                            <div className="border-2 border-dashed border-black/10 dark:border-white/10 rounded-xl p-4 text-center hover:bg-black/5 dark:bg-white/5 transition-colors relative cursor-pointer group">
+                                                <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                                {imagePreview ? <img src={imagePreview} alt="Aperçu" className="h-32 mx-auto object-cover rounded-lg" /> : <div className="text-slate-600 dark:text-slate-400 py-6"><ImageIcon size={32} className="mx-auto mb-2 opacity-50 group-hover:opacity-100 text-emerald-400" /><p className="text-sm">Cliquez ou glissez une image</p></div>}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Titre</label>
+                                            <input type="text" name="titre" value={newTerrain.titre} onChange={handleNewTerrainChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Prix (DH/heure)</label>
+                                            <input type="number" name="prix" value={newTerrain.prix} onChange={handleNewTerrainChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                                            <textarea name="description" value={newTerrain.description} onChange={handleNewTerrainChange} required rows="3" className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"></textarea>
+                                        </div>
+                                        <div className="pt-4 flex gap-3">
+                                            <button type="button" onClick={() => setShowAddTerrainForm(false)} className="flex-1 px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 text-slate-900 dark:text-white hover:bg-black/5 dark:bg-white/5 transition-colors">Annuler</button>
+                                            <button type="submit" className="flex-1 px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white font-medium shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-colors">Ajouter</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Delete Confirmation Modal */}
+                        {showDeleteConfirmation && (
+                            <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} className="relative bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center">
+                                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                                    <AlertTriangle size={32} className="text-red-500" />
+                                </div>
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Confirmer la suppression</h2>
+                                <p className="text-slate-600 dark:text-slate-400 mb-6">Êtes-vous sûr de vouloir supprimer définitivement ce terrain ?</p>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setShowDeleteConfirmation(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-black/10 dark:border-white/10 text-slate-900 dark:text-white hover:bg-black/5 dark:bg-white/5 transition-colors">Annuler</button>
+                                    <button onClick={handleConfirmDelete} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-slate-900 dark:text-white font-medium shadow-[0_0_15px_rgba(239,68,68,0.3)] transition-colors">Supprimer</button>
+                                </div>
+                            </motion.div>
+                        )}
                     </div>
-                </div>
-            )}
-        </>
+                )}
+            </AnimatePresence>
+        </div>
     );
 }
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import LoginPrompt from './LoginPrompt';
 import * as reservationService from '../services/reservationService';
-import './terrain.css';
 
 import { BASE_URL } from '../services/config';
 

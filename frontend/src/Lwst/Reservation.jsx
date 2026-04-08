@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+    CalendarCheck, Edit, Trash2, CreditCard, CheckCircle, 
+    XCircle, Clock, CalendarDays, User, MapPin, AlertTriangle, ListFilter
+} from 'lucide-react';
 import LoginPrompt from './LoginPrompt';
 import * as reservationService from '../services/reservationService';
-import './reservations.css'; // Importer le nouveau fichier CSS
-
 import { BASE_URL } from '../services/config';
 
 function Reservation({ user }) {
@@ -10,149 +13,72 @@ function Reservation({ user }) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-    const [formData, setFormData] = useState({
-        id: null,
-        name: '',
-        date: '',
-        timeSlot: '',
-        accepted: false,
-        rejected: false,
-        userId: ''
-    });
+    const [formData, setFormData] = useState({ id: null, name: '', date: '', timeSlot: '', accepted: false, rejected: false, userId: '' });
     const [confirmationMessage, setConfirmationMessage] = useState('');
     const [reservationToDelete, setReservationToDelete] = useState(null);
     const [deletionMessage, setDeletionMessage] = useState('');
-    const [paymentForm, setPaymentForm] = useState({
-        cardNumber: '',
-        cardName: '',
-        expiryDate: '',
-        cvv: '',
-        amount: '',
-        reservationId: ''
-    });
-    
-    // Nouveau filtre pour les administrateurs
+    const [paymentForm, setPaymentForm] = useState({ cardNumber: '', cardName: '', expiryDate: '', cvv: '', amount: '', reservationId: '' });
     const [paymentFilter, setPaymentFilter] = useState('all');
     
-    // Initialiser le statut de paiement basé sur les données de réservation
+    // Status initialization
     const initPaymentStatus = () => {
         const status = {};
         reservations.forEach(reservation => {
-            if (reservation.isPaid) {
-                status[reservation.id] = 'success';
-            }
+            if (reservation.isPaid) status[reservation.id] = 'success';
         });
         return status;
     };
-    
     const [paymentStatus, setPaymentStatus] = useState(initPaymentStatus);
     
-    // Mettre à jour le statut de paiement lorsque les réservations changent
-    useEffect(() => {
-        setPaymentStatus(initPaymentStatus);
-    }, [reservations]);
+    useEffect(() => { setPaymentStatus(initPaymentStatus); }, [reservations]);
 
-    // Charger les réservations
+    // Fetch reservations
     useEffect(() => {
         const fetchReservations = async () => {
             try {
                 let response;
-                console.log('Chargement des réservations pour:', user.role === 'admin' ? 'admin' : user.username);
-                
                 if (user.role === 'admin') {
                     response = await reservationService.getAllReservations();
                 } else {
                     response = await reservationService.getUserReservations(user.username);
                 }
-                console.log('Réservations chargées:', response.data);
                 setReservations(response.data);
             } catch (error) {
-                console.error('Erreur lors du chargement des réservations:', error);
                 setConfirmationMessage('Erreur lors du chargement des réservations');
             }
         };
-
-        if (user) {
-            fetchReservations();
-        }
+        if (user) fetchReservations();
     }, [user]);
 
-    // Après avoir chargé les réservations, essayer de récupérer les noms des terrains si nécessaire
+    // Enrich reservations with terrain names
     useEffect(() => {
         const enrichReservationsWithTerrainNames = async () => {
-            // Vérifier si on a besoin de récupérer des noms de terrains
-            const needsTerrainNames = reservations.some(res => 
-                (!res.terrainName && !res.terrain_name && res.terrain_id) || 
-                (!res.terrainName && !res.terrain_name && res.terrainId));
-            
+            const needsTerrainNames = reservations.some(res => (!res.terrainName && !res.terrain_name && res.terrain_id) || (!res.terrainName && !res.terrain_name && res.terrainId));
             if (!needsTerrainNames) return;
-            
             try {
-                console.log('Enrichissement des réservations avec les noms de terrains');
-                // Faire une requête pour obtenir tous les terrains
-                const response = await fetch(`${BASE_URL}/direct-get-terrains.php`, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) {
-                    console.error('Échec de la récupération des terrains');
-                    return;
-                }
-                
+                const response = await fetch(`${BASE_URL}/direct-get-terrains.php`, { headers: { 'Accept': 'application/json' }});
+                if (!response.ok) return;
                 const terrains = await response.json();
-                console.log('Terrains récupérés pour enrichissement:', terrains);
-                
-                // Créer une map des terrains par ID
                 const terrainsMap = {};
-                terrains.forEach(terrain => {
-                    terrainsMap[terrain.id] = terrain.titre;
-                });
+                terrains.forEach(terrain => { terrainsMap[terrain.id] = terrain.titre; });
                 
-                console.log('Map des terrains créée:', terrainsMap);
-                
-                // Mettre à jour les réservations avec les noms de terrains
                 const updatedReservations = reservations.map(res => {
                     const terrainId = res.terrain_id || res.terrainId;
-                    console.log(`Traitement de la réservation ${res.id}, terrain_id: ${terrainId}`);
-                    
                     if (terrainId && terrainsMap[terrainId]) {
-                        console.log(`Nom de terrain trouvé pour ${terrainId}: ${terrainsMap[terrainId]}`);
-                        return {
-                            ...res,
-                            terrainName: terrainsMap[terrainId],
-                            terrain_name: terrainsMap[terrainId] // Assurer la compatibilité entre les formats
-                        };
+                        return { ...res, terrainName: terrainsMap[terrainId], terrain_name: terrainsMap[terrainId] };
                     }
                     return res;
                 });
-                
-                console.log('Réservations enrichies:', updatedReservations);
                 setReservations(updatedReservations);
-                
-            } catch (error) {
-                console.error('Erreur lors de l\'enrichissement des réservations:', error);
-            }
+            } catch (error) {}
         };
-        
-        if (reservations.length > 0) {
-            enrichReservationsWithTerrainNames();
-        }
+        if (reservations.length > 0) enrichReservationsWithTerrainNames();
     }, [reservations.length]);
 
-    // Si l'utilisateur n'est pas connecté, afficher le message d'authentification requise
-    if (!user) {
-        return <LoginPrompt />;
-    }
+    if (!user) return <LoginPrompt />;
 
-    // Filtrer les réservations en fonction du rôle de l'utilisateur et du filtre de paiement
-    let displayedReservations = user.role === 'admin'
-        ? reservations  // Afficher toutes les réservations pour l'admin
-        : reservations.filter(res => res.userId === user.username);  // Filtrer pour l'utilisateur standard
-    
-    // Appliquer le filtre de paiement pour les administrateurs
+    // Filtering
+    let displayedReservations = user.role === 'admin' ? reservations : reservations.filter(res => res.userId === user.username);
     if (user.role === 'admin' && paymentFilter !== 'all') {
         displayedReservations = displayedReservations.filter(res => {
             const isPaid = paymentStatus[res.id] === 'success' || res.isPaid;
@@ -160,525 +86,352 @@ function Reservation({ user }) {
         });
     }
 
-    // Calculer le nombre de jours restants pour chaque réservation
+    // Days calculation
     const calculateDaysRemaining = (reservationDate) => {
         const today = new Date();
-        today.setHours(0, 0, 0, 0); // Normaliser l'heure à minuit
+        today.setHours(0, 0, 0, 0);
         const matchDate = new Date(reservationDate);
-        matchDate.setHours(0, 0, 0, 0); // Normaliser l'heure à minuit
-        
-        // Différence en millisecondes convertie en jours
+        matchDate.setHours(0, 0, 0, 0);
         const diffTime = matchDate.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        return diffDays;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     };
 
-    const handleModifyClick = (reservation) => {
-        setFormData({ ...reservation });
-        setIsEditModalOpen(true);
-    };
-
-    const handleDeleteClick = (reservationId) => {
-        setReservationToDelete(reservationId);
-        setIsDeleteModalOpen(true);
-    };
-
+    // Actions
+    const handleModifyClick = (reservation) => { setFormData({ ...reservation }); setIsEditModalOpen(true); };
+    const handleDeleteClick = (reservationId) => { setReservationToDelete(reservationId); setIsDeleteModalOpen(true); };
+    
     const confirmDelete = async () => {
         try {
-            console.log('Suppression de la réservation:', reservationToDelete);
-            
-            // Passer le rôle administrateur au service de suppression
-            await reservationService.deleteReservation(
-                reservationToDelete, 
-                user.username, 
-                user.role === 'admin'
-            );
-            
-            // Mettre à jour la liste des réservations
-            setReservations(prevReservations => 
-                prevReservations.filter(res => res.id !== reservationToDelete)
-            );
-
-            setDeletionMessage('Réservation supprimée avec succès.');
+            await reservationService.deleteReservation(reservationToDelete, user.username, user.role === 'admin');
+            setReservations(prev => prev.filter(res => res.id !== reservationToDelete));
+            setDeletionMessage('Réservation supprimée.');
             setIsDeleteModalOpen(false);
             setReservationToDelete(null);
+            setTimeout(() => setDeletionMessage(''), 5000);
         } catch (error) {
-            console.error('Erreur lors de la suppression:', error);
             setDeletionMessage(error.message || 'Erreur lors de la suppression');
+            setTimeout(() => setDeletionMessage(''), 5000);
         }
-        setTimeout(() => setDeletionMessage(''), 5000);
     };
 
-    const handleCloseEditModal = () => {
-        setIsEditModalOpen(false);
-        setFormData({
-            id: null,
-            name: '',
-            date: '',
-            timeSlot: '',
-            accepted: false,
-            rejected: false,
-            userId: ''
-        });
-    };
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({
-            ...formData,
-            [name]: value
-        });
-    };
-    
-    // Gérer le changement du filtre de paiement
-    const handleFilterChange = (e) => {
-        setPaymentFilter(e.target.value);
-    };
+    const handleCloseEditModal = () => { setIsEditModalOpen(false); setFormData({ id: null, name: '', date: '', timeSlot: '', accepted: false, rejected: false, userId: '' }); };
+    const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+    const handleFilterChange = (e) => setPaymentFilter(e.target.value);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            console.log('Mise à jour de la réservation:', formData);
             const response = await reservationService.updateReservation(formData.id, formData);
-            
-            // Mettre à jour la liste des réservations
-            setReservations(prevReservations => 
-                prevReservations.map(res => 
-                    res.id === response.data.id ? response.data : res
-                )
-            );
-
+            setReservations(prev => prev.map(res => res.id === response.data.id ? response.data : res));
             setConfirmationMessage('Réservation modifiée avec succès.');
             setIsEditModalOpen(false);
+            setTimeout(() => setConfirmationMessage(''), 5000);
         } catch (error) {
-            console.error('Erreur lors de la modification:', error);
             setConfirmationMessage(error.message || 'Erreur lors de la modification');
+            setTimeout(() => setConfirmationMessage(''), 5000);
         }
-        setTimeout(() => setConfirmationMessage(''), 5000);
-    };
-
-    const handleAccept = (id) => {
-        // Implement the logic to accept a reservation
-    };
-
-    const handleReject = (id) => {
-        // Implement the logic to reject a reservation
     };
 
     const handlePaymentClick = (reservation) => {
-        setPaymentForm({
-            ...paymentForm,
-            reservationId: reservation.id,
-            amount: reservation.terrainPrice // Utilisation du prix du terrain
-        });
+        setPaymentForm({ ...paymentForm, reservationId: reservation.id, amount: reservation.terrainPrice || reservation.prix || 0 });
         setIsPaymentModalOpen(true);
     };
-
-    const handlePaymentChange = (e) => {
-        const { name, value } = e.target;
-        setPaymentForm({
-            ...paymentForm,
-            [name]: value
-        });
-    };
-
+    const handlePaymentChange = (e) => setPaymentForm({ ...paymentForm, [e.target.name]: e.target.value });
     const handlePaymentSubmit = async (e) => {
         e.preventDefault();
         try {
-            console.log('Paiement pour la réservation:', paymentForm.reservationId);
             await reservationService.markAsPaid(paymentForm.reservationId, user.username);
-            
-            // Mettre à jour la liste des réservations
-            setReservations(prevReservations => 
-                prevReservations.map(res => 
-                    res.id === paymentForm.reservationId 
-                        ? { ...res, isPaid: true, is_paid: true } 
-                        : res
-                )
-            );
-
+            setReservations(prev => prev.map(res => res.id === paymentForm.reservationId ? { ...res, isPaid: true, is_paid: true } : res));
             setConfirmationMessage('Paiement effectué avec succès.');
             setIsPaymentModalOpen(false);
-            setPaymentForm({
-                cardNumber: '',
-                cardName: '',
-                expiryDate: '',
-                cvv: '',
-                amount: '',
-                reservationId: ''
-            });
+            setPaymentForm({ cardNumber: '', cardName: '', expiryDate: '', cvv: '', amount: '', reservationId: '' });
+            setTimeout(() => setConfirmationMessage(''), 5000);
         } catch (error) {
-            console.error('Erreur lors du paiement:', error);
             setConfirmationMessage(error.message || 'Erreur lors du paiement');
+            setTimeout(() => setConfirmationMessage(''), 5000);
         }
-        setTimeout(() => setConfirmationMessage(''), 5000);
     };
 
     const today = new Date().toISOString().split('T')[0];
-    const timeSlots = [
-        "09:00-10:00", "10:00-11:00", "11:00-12:00",
-        "15:00-16:00", "16:00-17:00", "17:00-18:00",
-        "18:00-19:00", "19:00-20:00", "20:00-21:00",
-        "21:00-22:00"
-    ];
+    const timeSlots = ["09:00-10:00", "10:00-11:00", "11:00-12:00", "15:00-16:00", "16:00-17:00", "17:00-18:00", "18:00-19:00", "19:00-20:00", "20:00-21:00", "21:00-22:00"];
+
+    // Variants for animation
+    const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+    const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
     return (
-        <div className="reservation-container">
-            <h1>
-                {user.role === 'admin'
-                    ? 'Toutes les Réservations'
-                    : 'Historique des Réservations'}
-            </h1>
-            {confirmationMessage && (
-                <div className="confirmation-message">
-                    {confirmationMessage}
+        <div className="w-full">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+                <div>
+                    <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 mb-2">
+                        {user.role === 'admin' ? 'Toutes les Réservations' : 'Historique des Réservations'}
+                    </h1>
+                    <p className="text-slate-600 dark:text-slate-400">Gérez vos créneaux et vos paiements.</p>
                 </div>
-            )}
-            {deletionMessage && (
-                <div className="deletion-message">
-                    {deletionMessage}
-                </div>
-            )}
-            
-            {/* Filtre pour les administrateurs */}
-            {user.role === 'admin' && (
-                <div className="admin-filter">
-                    <label htmlFor="payment-filter">Filtrer par statut de paiement:</label>
-                    <select 
-                        id="payment-filter" 
-                        value={paymentFilter} 
-                        onChange={handleFilterChange}
-                        className="payment-filter-select"
-                    >
-                        <option value="all">Toutes les réservations</option>
-                        <option value="paid">Réservations payées</option>
-                        <option value="unpaid">Réservations non payées</option>
-                    </select>
-                </div>
-            )}
 
-            <table className="reservation-table">
-                <thead>
-                    <tr>
-                        <th>Nom</th>
-                        <th>Terrain</th>
-                        <th>Date</th>
-                        <th>Plage Horaire</th>
-                        {user.role === 'admin' && <th>Utilisateur</th>}
-                        {user.role === 'admin' && <th>Statut de Paiement</th>}
-                        {user.role === 'admin' && <th>Jours Restants</th>}
-                        <th>Actions</th>
-                        {user.role !== 'admin' && <th>Paiement</th>}
-                    </tr>
-                </thead>
-                <tbody>
-                    {displayedReservations.length === 0 ? (
-                        <tr>
-                            <td colSpan={user.role === 'admin' ? 8 : 5} className="no-reservations">
-                                Aucune réservation disponible.
-                            </td>
-                        </tr>
-                    ) : (
-                        displayedReservations.map(reservation => {
-                            const daysRemaining = calculateDaysRemaining(reservation.date);
-                            return (
-                                <tr key={reservation.id} className={
-                                    paymentStatus[reservation.id] === 'success' || reservation.isPaid
-                                        ? 'accepted' 
-                                        : 'pending'
-                                }>
-                                    <td>{reservation.name}</td>
-                                    <td className="terrain-name">
-                                        {reservation.terrainName || reservation.terrain_name || 
-                                         (reservation.terrain && reservation.terrain.titre) || 
-                                         (reservation.terrain && reservation.terrain.name) ||
-                                         (reservation.terrainId && `Terrain #${reservation.terrainId}`) || 
-                                         (reservation.terrain_id && `Terrain #${reservation.terrain_id}`) || (
-                                            <span className="terrain-name-unknown">
-                                                <i className="fas fa-question-circle"></i> Inconnu
-                                            </span>
-                                        )}
+                {user.role === 'admin' && (
+                    <div className="flex items-center gap-2 bg-white/80 dark:bg-black/40 border border-black/10 dark:border-white/10 rounded-xl p-2 px-4 shadow-lg backdrop-blur-sm">
+                        <ListFilter size={18} className="text-slate-600 dark:text-slate-400" />
+                        <select 
+                            value={paymentFilter} 
+                            onChange={handleFilterChange}
+                            className="bg-transparent text-slate-900 dark:text-white text-sm focus:outline-none cursor-pointer"
+                        >
+                            <option value="all" className="bg-black">Toutes les réservations</option>
+                            <option value="paid" className="bg-black">Réservations payées</option>
+                            <option value="unpaid" className="bg-black">Réservations non payées</option>
+                        </select>
+                    </div>
+                )}
+            </div>
+
+            <AnimatePresence>
+                {(confirmationMessage || deletionMessage) && (
+                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 px-4 py-3 rounded-xl mb-6 flex items-center gap-3">
+                        <CheckCircle size={20} className="text-emerald-400" />
+                        {confirmationMessage || deletionMessage}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <motion.div 
+                className="bg-white dark:bg-[#121212] border border-black/5 dark:border-white/5 rounded-2xl overflow-hidden shadow-2xl"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+            >
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-black/5 dark:bg-white/5 border-b border-black/10 dark:border-white/10">
+                                <th className="p-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Nom</th>
+                                <th className="p-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Terrain</th>
+                                <th className="p-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Date & Horaire</th>
+                                {user.role === 'admin' && <th className="p-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Utilisateur</th>}
+                                {user.role === 'admin' && <th className="p-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Statut de Paiement</th>}
+                                {user.role === 'admin' && <th className="p-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Échéance</th>}
+                                <th className="p-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Actions</th>
+                                {user.role !== 'admin' && <th className="p-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Paiement</th>}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {displayedReservations.length === 0 ? (
+                                <tr>
+                                    <td colSpan={user.role === 'admin' ? 7 : 5} className="p-8 text-center text-slate-600 dark:text-slate-400">
+                                        <CalendarCheck size={48} className="mx-auto mb-4 opacity-50" />
+                                        <p>Aucune réservation trouvée.</p>
                                     </td>
-                                    <td>{reservation.date}</td>
-                                    <td>{reservation.timeSlot}</td>
-                                    {user.role === 'admin' && <td>{reservation.userId || 'Non assigné'}</td>}
-                                    {user.role === 'admin' && (
-                                        <td className="status-cell">
-                                            {paymentStatus[reservation.id] === 'success' || reservation.isPaid ? (
-                                                <div className="payment-success">
-                                                    <i className="fas fa-check-circle"></i> Payée
-                                                </div>
-                                            ) : (
-                                                <div className="status-rejected">
-                                                    <i className="fas fa-times-circle"></i> Non payée
-                                                </div>
-                                            )}
-                                        </td>
-                                    )}
-                                    {user.role === 'admin' && (
-                                        <td className="days-remaining-cell">
-                                            {daysRemaining < 0 ? (
-                                                <span className="days-past">
-                                                    <i className="fas fa-calendar-times"></i> Passé ({Math.abs(daysRemaining)} j)
-                                                </span>
-                                            ) : daysRemaining === 0 ? (
-                                                <span className="days-today">
-                                                    <i className="fas fa-calendar-day"></i> Aujourd'hui
-                                                </span>
-                                            ) : daysRemaining <= 3 ? (
-                                                <span className="days-soon">
-                                                    <i className="fas fa-calendar-alt"></i> {daysRemaining} jour{daysRemaining > 1 ? 's' : ''}
-                                                </span>
-                                            ) : (
-                                                <span className="days-normal">
-                                                    <i className="fas fa-calendar-alt"></i> {daysRemaining} jours
-                                                </span>
-                                            )}
-                                        </td>
-                                    )}
-                                    <td className="actions">
-                                        {user.role !== 'admin' && (
-                                            <div className="actions-container">
-                                                <button onClick={() => handleModifyClick(reservation)} className="btn-modifier">
-                                                    <i className="fas fa-edit"></i> Modifier
-                                                </button>
-                                                <button onClick={() => handleDeleteClick(reservation.id)} className="btn">
-                                                    <i className="fas fa-trash-alt"></i> Supprimer
-                                                </button>
-                                            </div>
-                                        )}
-                                        {user.role === 'admin' && (
-                                            <button onClick={() => handleDeleteClick(reservation.id)} className="btn">
-                                                <i className="fas fa-trash-alt"></i> Supprimer
-                                            </button>
-                                        )}
-                                    </td>
-                                    {user.role !== 'admin' && (
-                                        <td className="payment-cell">
-                                            {!paymentStatus[reservation.id] && !reservation.isPaid && (
-                                                <button
-                                                    onClick={() => handlePaymentClick(reservation)}
-                                                    className="btn-payment"
-                                                >
-                                                    <i className="fas fa-credit-card"></i> Payer
-                                                </button>
-                                            )}
-                                            {(paymentStatus[reservation.id] === 'success' || reservation.isPaid) && (
-                                                <span className="payment-success">
-                                                    <i className="fas fa-check-circle"></i> Paiement Réussi
-                                                </span>
-                                            )}
-                                        </td>
-                                    )}
                                 </tr>
-                            );
-                        })
-                    )}
-                </tbody>
-            </table>
+                            ) : (
+                                displayedReservations.map(reservation => {
+                                    const daysRemaining = calculateDaysRemaining(reservation.date);
+                                    const isPaid = paymentStatus[reservation.id] === 'success' || reservation.isPaid;
 
-            {isEditModalOpen && (
-                <div className="modal">
-                    <div className="modal-content">
-                        <h2>Modifier Réservation</h2>
-                        <form onSubmit={handleSubmit}>
-                            <div className="form-group">
-                                <label><i className="fas fa-user"></i> Nom:</label>
-                                <input type="text" name="name" value={formData.name} onChange={handleChange} required />
+                                    return (
+                                        <motion.tr 
+                                            key={reservation.id} 
+                                            variants={itemVariants}
+                                            className={`hover:bg-black/5 dark:bg-white/5 transition-colors ${isPaid ? '' : 'bg-red-500/5'}`}
+                                        >
+                                            <td className="p-4 font-medium text-slate-900 dark:text-white">{reservation.name}</td>
+                                            <td className="p-4 text-emerald-400 font-medium">
+                                                {reservation.terrainName || reservation.terrain_name || `Terrain #${reservation.terrain_id || reservation.terrainId}`}
+                                            </td>
+                                            <td className="p-4 text-slate-700 dark:text-slate-300">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <CalendarDays size={14} className="text-slate-500" />
+                                                    {reservation.date}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-sm text-emerald-400">
+                                                    <Clock size={14} />
+                                                    {reservation.timeSlot}
+                                                </div>
+                                            </td>
+                                            {user.role === 'admin' && <td className="p-4 text-slate-700 dark:text-slate-300">{reservation.userId || 'Guest'}</td>}
+                                            
+                                            {user.role === 'admin' && (
+                                                <td className="p-4">
+                                                    {isPaid ? (
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
+                                                            <CheckCircle size={14} /> Payée
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-semibold border border-red-500/20">
+                                                            <XCircle size={14} /> Non payée
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            )}
+                                            
+                                            {user.role === 'admin' && (
+                                                <td className="p-4">
+                                                    {daysRemaining < 0 ? (
+                                                        <span className="text-slate-500 text-sm">Passé</span>
+                                                    ) : daysRemaining === 0 ? (
+                                                        <span className="text-emerald-400 font-medium text-sm">Aujourd'hui</span>
+                                                    ) : daysRemaining <= 3 ? (
+                                                        <span className="text-amber-400 font-medium text-sm">Dans {daysRemaining} jours</span>
+                                                    ) : (
+                                                        <span className="text-slate-700 dark:text-slate-300 text-sm">Dans {daysRemaining} jours</span>
+                                                    )}
+                                                </td>
+                                            )}
+
+                                            <td className="p-4 text-slate-700 dark:text-slate-300">
+                                                <div className="flex gap-2">
+                                                    {user.role !== 'admin' && (
+                                                        <button onClick={() => handleModifyClick(reservation)} className="p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors tooltip" title="Modifier">
+                                                            <Edit size={16} />
+                                                        </button>
+                                                    )}
+                                                    <button onClick={() => handleDeleteClick(reservation.id)} className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors tooltip" title="Supprimer">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+
+                                            {user.role !== 'admin' && (
+                                                <td className="p-4">
+                                                    {isPaid ? (
+                                                        <span className="inline-flex items-center gap-1.5 text-emerald-400 font-medium">
+                                                            <CheckCircle size={18} /> Confirmé
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handlePaymentClick(reservation)}
+                                                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-900 dark:text-white font-medium hover:from-emerald-400 hover:to-teal-400 transition-colors shadow-lg"
+                                                        >
+                                                            <CreditCard size={16} /> Payer
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            )}
+                                        </motion.tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </motion.div>
+
+            {/* Edit Modal */}
+            <AnimatePresence>
+                {isEditModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white dark:bg-black/60 backdrop-blur-sm" onClick={handleCloseEditModal} />
+                        <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} className="relative bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+                            <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-black/5 dark:bg-white/5">
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Modifier Réservation</h2>
+                                <button onClick={handleCloseEditModal} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors"><XCircle size={24} /></button>
                             </div>
-                            <div className="form-group">
-                                <label><i className="fas fa-futbol"></i> Terrain:</label>
-                                <input 
-                                    type="text" 
-                                    value={formData.terrainName || formData.terrain_name || 
-                                          (formData.terrain && formData.terrain.titre) || 
-                                          (formData.terrain && formData.terrain.name) ||
-                                          (formData.terrainId && `Terrain #${formData.terrainId}`) || 
-                                          (formData.terrain_id && `Terrain #${formData.terrain_id}`) || 
-                                          "Terrain non spécifié"} 
-                                    readOnly 
-                                    className="readonly-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label><i className="fas fa-calendar-alt"></i> Date de Réservation:</label>
-                                <input type="date" name="date" min={today} value={formData.date} onChange={handleChange} required />
-                            </div>
-                            <div className="form-group">
-                                <label><i className="fas fa-clock"></i> Plage Horaire:</label>
-                                <div className="time-slot-container">
-                                    <select 
-                                        name="timeSlot" 
-                                        value={formData.timeSlot || ''} 
-                                        onChange={handleChange} 
-                                        required
-                                        className="time-slot-select"
-                                    >
-                                        <option value="" disabled>Choisir une heure</option>
-                                        {timeSlots.map(slot => {
-                                            const isReserved = reservations.some(
-                                                reservation =>
-                                                    reservation.date === formData.date &&
-                                                    reservation.timeSlot === slot &&
-                                                    reservation.id !== formData.id
-                                            );
-                                            return (
-                                                <option
-                                                    key={slot}
-                                                    value={slot}
-                                                    disabled={isReserved}
-                                                    className={isReserved ? 'reserved-slot' : ''}
-                                                >
-                                                    {slot} {isReserved ? '(Déjà réservé)' : ''}
-                                                </option>
-                                            );
-                                        })}
-                                    </select>
-                                    <div className="time-slot-legend">
-                                        <div className="legend-item">
-                                            <span className="legend-color available"></span> Disponible
-                                        </div>
-                                        <div className="legend-item">
-                                            <span className="legend-color reserved"></span> Déjà réservé
+                            <div className="p-6">
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nom</label>
+                                        <div className="relative">
+                                            <User size={18} className="absolute left-3 top-3 text-slate-600 dark:text-slate-400" />
+                                            <input type="text" name="name" value={formData.name} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
                                         </div>
                                     </div>
-                                </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Terrain</label>
+                                        <div className="relative">
+                                            <MapPin size={18} className="absolute left-3 top-3 text-slate-600 dark:text-slate-400" />
+                                            <input type="text" value={formData.terrainName || formData.terrain_name || `Terrain #${formData.terrainId || formData.terrain_id}`} readOnly className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-slate-600 dark:text-slate-400 cursor-not-allowed" />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date</label>
+                                            <input type="date" name="date" min={today} value={formData.date} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 [color-scheme:dark]" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Horaire</label>
+                                            <select name="timeSlot" value={formData.timeSlot || ''} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+                                                <option value="" disabled>Choisir</option>
+                                                {timeSlots.map(slot => {
+                                                    const isReserved = reservations.some(reservation => reservation.date === formData.date && reservation.timeSlot === slot && reservation.id !== formData.id);
+                                                    return <option key={slot} value={slot} disabled={isReserved} className={isReserved ? 'text-red-400' : ''}>{slot} {isReserved ? '(Pris)' : ''}</option>;
+                                                })}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="pt-4 flex gap-3">
+                                        <button type="button" onClick={handleCloseEditModal} className="flex-1 px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 text-slate-900 dark:text-white hover:bg-black/5 dark:bg-white/5 transition-colors">Annuler</button>
+                                        <button type="submit" className="flex-1 px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white font-medium shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-colors">Enregistrer</button>
+                                    </div>
+                                </form>
                             </div>
-                            {user.role === 'admin' && (
-                                <div className="form-group">
-                                    <label>Utilisateur:</label>
-                                    <input
-                                        type="text"
-                                        name="userId"
-                                        value={formData.userId || ''}
-                                        onChange={handleChange}
-                                        readOnly={formData.userId !== user.username}
-                                    />
-                                </div>
-                            )}
-
-                            <div className="modal-actions">
-                                <button type="submit" className="btn-modify">
-                                    <i className="fas fa-check"></i> Enregistrer
-                                </button>
-                                <button type="button" className="btn" onClick={handleCloseEditModal}>
-                                    <i className="fas fa-times"></i> Annuler
-                                </button>
-                            </div>
-                        </form>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
 
-            {isDeleteModalOpen && (
-                <div className="modal">
-                    <div className="modal-content">
-                        <h2>Êtes-vous sûr de vouloir supprimer cette réservation ?</h2>
-                        <div className="modal-actions">
-                            <button className="btn-modify" onClick={confirmDelete}>
-                                <i className="fas fa-check"></i> Confirmer
-                            </button>
-                            <button className="btn" onClick={() => setIsDeleteModalOpen(false)}>
-                                <i className="fas fa-times"></i> Annuler
-                            </button>
-                        </div>
+            {/* Delete Modal */}
+            <AnimatePresence>
+                {isDeleteModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white dark:bg-black/60 backdrop-blur-sm" onClick={() => setIsDeleteModalOpen(false)} />
+                        <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} className="relative bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center">
+                            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                                <AlertTriangle size={32} className="text-red-500" />
+                            </div>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Annuler la réservation</h2>
+                            <p className="text-slate-600 dark:text-slate-400 mb-6">Êtes-vous sûr de vouloir supprimer définitivement cette réservation ?</p>
+                            <div className="flex gap-3">
+                                <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-black/10 dark:border-white/10 text-slate-900 dark:text-white hover:bg-black/5 dark:bg-white/5 transition-colors">Annuler</button>
+                                <button onClick={confirmDelete} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-slate-900 dark:text-white font-medium shadow-[0_0_15px_rgba(239,68,68,0.3)] transition-colors">Supprimer</button>
+                            </div>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
 
-            {isPaymentModalOpen && (
-                <div className="modal">
-                    <div className="modal-content">
-                        <h2>Paiement</h2>
-                        <form onSubmit={handlePaymentSubmit} className="tournoi-form">
-                            <div className="form-group">
-                                <label>Numéro de carte:</label>
-                                <input
-                                    type="text"
-                                    name="cardNumber"
-                                    value={paymentForm.cardNumber}
-                                    onChange={handlePaymentChange}
-                                    required
-                                    placeholder="1234 5678 9012 3456"
-                                    maxLength="19"
-                                />
+            {/* Payment Modal */}
+            <AnimatePresence>
+                {isPaymentModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white dark:bg-black/60 backdrop-blur-sm" onClick={() => setIsPaymentModalOpen(false)} />
+                        <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} className="relative bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+                            <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-black/5 dark:bg-white/5">
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><CreditCard className="text-emerald-400" /> Paiement Sécurisé</h2>
+                                <button onClick={() => setIsPaymentModalOpen(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors"><XCircle size={24} /></button>
                             </div>
-                            <div className="form-group">
-                                <label>Nom sur la carte:</label>
-                                <input
-                                    type="text"
-                                    name="cardName"
-                                    value={paymentForm.cardName}
-                                    onChange={handlePaymentChange}
-                                    required
-                                    placeholder="JEAN DUPONT"
-                                />
+                            <div className="p-6">
+                                <form onSubmit={handlePaymentSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Montant à payer</label>
+                                        <input type="text" value={`${paymentForm.amount} DH`} readOnly className="w-full bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3 text-emerald-400 font-bold text-center text-xl cursor-not-allowed" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Numéro de carte</label>
+                                        <input type="text" name="cardNumber" value={paymentForm.cardNumber} onChange={handlePaymentChange} required maxLength="19" placeholder="1234 5678 9012 3456" className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-mono tracking-widest" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nom sur la carte</label>
+                                        <input type="text" name="cardName" value={paymentForm.cardName} onChange={handlePaymentChange} required placeholder="JEAN DUPONT" className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 uppercase" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Expiration</label>
+                                            <input type="text" name="expiryDate" value={paymentForm.expiryDate} onChange={handlePaymentChange} required maxLength="5" placeholder="MM/AA" className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-mono" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">CVV</label>
+                                            <input type="password" name="cvv" value={paymentForm.cvv} onChange={handlePaymentChange} required maxLength="3" placeholder="123" className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-mono tracking-widest" />
+                                        </div>
+                                    </div>
+                                    <div className="pt-4 flex gap-3">
+                                        <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="flex-1 px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 text-slate-900 dark:text-white hover:bg-black/5 dark:bg-white/5 transition-colors">Annuler</button>
+                                        <button type="submit" className="flex-1 px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white font-medium shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-colors">Confirmer le paiement</button>
+                                    </div>
+                                </form>
                             </div>
-                            <div className="form-group">
-                                <label>Date d'expiration:</label>
-                                <input
-                                    type="text"
-                                    name="expiryDate"
-                                    value={paymentForm.expiryDate}
-                                    onChange={handlePaymentChange}
-                                    required
-                                    placeholder="MM/AA"
-                                    maxLength="5"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>CVV:</label>
-                                <input
-                                    type="text"
-                                    name="cvv"
-                                    value={paymentForm.cvv}
-                                    onChange={handlePaymentChange}
-                                    required
-                                    placeholder="123"
-                                    maxLength="3"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Montant à payer:</label>
-                                <input
-                                    type="text"
-                                    name="amount"
-                                    value={`${paymentForm.amount} DH`}
-                                    readOnly
-                                    className="readonly-input"
-                                />
-                            </div>
-                            <div className="modal-actions">
-                                <button
-                                    type="submit"
-                                    className={`btn-modify ${paymentStatus[paymentForm.reservationId] === 'success' ? 'success' : ''}`}
-                                    disabled={paymentStatus[paymentForm.reservationId] === 'success'}
-                                >
-                                    <i className="fas fa-credit-card"></i> Payer
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn"
-                                    onClick={() => {
-                                        setIsPaymentModalOpen(false);
-                                        setPaymentForm({
-                                            cardNumber: '',
-                                            cardName: '',
-                                            expiryDate: '',
-                                            cvv: '',
-                                            amount: '',
-                                            reservationId: ''
-                                        });
-                                    }}
-                                >
-                                    <i className="fas fa-times"></i> Annuler
-                                </button>
-                            </div>
-                        </form>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 }
