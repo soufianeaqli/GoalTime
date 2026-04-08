@@ -130,12 +130,10 @@ export const deleteTournament = async (id) => {
 export const registerTeam = async (tournamentId, teamData) => {
     try {
         // S'assurer que l'utilisateur connecté est associé à cette équipe
-        // en ajoutant l'ID utilisateur si disponible dans localStorage
         const userStr = localStorage.getItem('user');
         if (userStr) {
             try {
                 const user = JSON.parse(userStr);
-                // Ajouter l'ID utilisateur aux données de l'équipe si disponible
                 if (user && user.id) {
                     teamData.user_id = user.id;
                 }
@@ -145,23 +143,26 @@ export const registerTeam = async (tournamentId, teamData) => {
             }
         }
         
-        // Convertir les données en JSON et encoder pour l'URL
-        const jsonData = encodeURIComponent(JSON.stringify(teamData));
-        
         console.log('Sending registration data:', teamData, 'for tournament:', tournamentId);
         
-        // Utiliser la route sans CSRF avec méthode GET
-        const response = await fetch(`${API_URL}/api/no-csrf/register-team-tournament/${tournamentId}?data=${jsonData}`, {
-            method: 'GET',
+        // Utiliser le script PHP direct
+        const response = await fetch(`${BASE_URL}/direct-register-team.php`, {
+            method: 'POST',
             headers: {
-                'Accept': 'application/json'
-            }
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ tournoi_id: tournamentId, ...teamData })
         });
         
-        const data = await response.json();
-        
         if (!response.ok) {
-            console.error('Error response:', data);
+            const errText = await response.text();
+            console.error('Error response:', errText);
+            throw new Error('Erreur lors de l\'inscription de l\'équipe: ' + response.status);
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
             throw new Error(data.message || 'Erreur lors de l\'inscription de l\'équipe');
         }
         
@@ -175,65 +176,49 @@ export const registerTeam = async (tournamentId, teamData) => {
 
 export const unregisterTeam = async (tournamentId, teamId = null) => {
     try {
-        let url = `${API_URL}/api/no-csrf/unregister-team-tournament/${tournamentId}?`;
-        
-        // Si nous avons un ID d'équipe, l'utiliser en priorité
-        if (teamId) {
-            url += `team_id=${teamId}`;
-            console.log('Utilisera l\'ID d\'équipe pour la désinscription:', teamId);
-        } else {
-            // Sinon, essayer de trouver l'utilisateur connecté
-            console.log('Pas d\'ID d\'équipe fourni, recherche des informations utilisateur...');
-            const userStr = localStorage.getItem('user');
-            console.log('Données utilisateur en localStorage:', userStr);
-            
-            // Vérifier si on a les données utilisateur
-            if (!userStr) {
-                console.error('Aucune donnée utilisateur en localStorage');
-                throw new Error('Aucune information d\'utilisateur disponible pour la désinscription');
-            }
-            
-            try {
-                const user = JSON.parse(userStr);
-                console.log('Données utilisateur parsing JSON:', user);
-                
-                if (user && user.id) {
-                    url += `user_id=${user.id}`;
-                    console.log('Utilisera l\'ID utilisateur pour la désinscription:', user.id);
-                } else if (user && user.email) {
-                    url += `email=${encodeURIComponent(user.email)}`;
-                    console.log('Utilisera l\'email pour la désinscription:', user.email);
-                } else if (user && user.username) {
-                    // Ajouter le support pour l'identifiant par nom d'utilisateur
-                    url += `captain=${encodeURIComponent(user.username)}`;
-                    console.log('Utilisera le nom d\'utilisateur pour la désinscription:', user.username);
-                } else {
-                    console.error('Données utilisateur insuffisantes:', user);
-                    throw new Error('Impossible de déterminer l\'utilisateur à désinscrire');
-                }
-            } catch (e) {
-                console.error('Error parsing user data from localStorage', e);
-                throw new Error('Erreur lors de la récupération des informations utilisateur');
-            }
+        // Récupérer l'ID utilisateur depuis localStorage
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+            throw new Error('Aucune information d\'utilisateur disponible pour la désinscription');
         }
         
-        console.log('Sending unregistration request to:', url);
+        let userId = null;
+        try {
+            const user = JSON.parse(userStr);
+            userId = user?.id || null;
+        } catch (e) {
+            throw new Error('Erreur lors de la récupération des informations utilisateur');
+        }
         
-        // Utiliser la route sans CSRF avec méthode GET
-        const response = await fetch(url, {
-            method: 'GET',
+        if (!userId) {
+            throw new Error('Impossible de déterminer l\'utilisateur à désinscrire');
+        }
+        
+        console.log('Sending unregistration request for tournament:', tournamentId, 'user:', userId);
+        
+        // Utiliser le script PHP direct
+        const response = await fetch(`${BASE_URL}/direct-unregister-team.php`, {
+            method: 'POST',
             headers: {
-                'Accept': 'application/json'
-            }
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ tournoi_id: tournamentId, user_id: userId })
         });
+        
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error('Error response from unregister:', errText);
+            throw new Error('Erreur lors de la désinscription: ' + response.status);
+        }
         
         const data = await response.json();
         console.log('Réponse brute de l\'API:', data);
         
-        if (!response.ok) {
-            console.error('Error response from unregister:', data);
+        if (!data.success) {
             throw new Error(data.message || 'Erreur lors de la désinscription de l\'équipe');
         }
+        
         console.log('Unregistration successful:', data);
         return data;
     } catch (error) {
