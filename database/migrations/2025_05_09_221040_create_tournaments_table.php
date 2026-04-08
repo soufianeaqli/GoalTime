@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('format');
             $table->string('entry_fee');
             $table->json('teams')->nullable();
+            $table->string('image')->nullable();
             $table->timestamps();
         });
     }
