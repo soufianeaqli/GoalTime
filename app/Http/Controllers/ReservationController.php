@@ -43,8 +43,15 @@ class ReservationController extends Controller
                 'email' => 'required|email',
                 'date' => 'required|date',
                 'time_slot' => 'required|string',
-                'price' => 'required|numeric'
+                'price' => 'nullable|numeric',
+                'prix' => 'nullable|numeric'
             ]);
+
+            // Normalize price field
+            if (!isset($validatedData['price']) && isset($validatedData['prix'])) {
+                $validatedData['price'] = $validatedData['prix'];
+            }
+            unset($validatedData['prix']);
 
             // Vérifier la disponibilité
             $existingReservation = Reservation::where('terrain_id', $validatedData['terrain_id'])
@@ -97,7 +104,10 @@ class ReservationController extends Controller
                 'name' => 'string',
                 'email' => 'email',
                 'date' => 'date',
-                'time_slot' => 'string'
+                'time_slot' => 'string',
+                'is_paid' => 'boolean',
+                'accepted' => 'boolean',
+                'rejected' => 'boolean'
             ]);
 
             $reservation->update($validatedData);
@@ -117,6 +127,19 @@ class ReservationController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur lors de la suppression de la réservation: ' . $e->getMessage());
             return response()->json(['error' => 'Erreur lors de la suppression de la réservation'], 500);
+        }
+    }
+
+    public function markAsPaid($id)
+    {
+        try {
+            $reservation = Reservation::findOrFail($id);
+            $reservation->is_paid = true;
+            $reservation->save();
+            return response()->json(['message' => 'Réservation marquée comme payée', 'data' => $reservation]);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors du marquage comme payée: ' . $e->getMessage());
+            return response()->json(['error' => 'Erreur lors du marquage comme payée'], 500);
         }
     }
 }

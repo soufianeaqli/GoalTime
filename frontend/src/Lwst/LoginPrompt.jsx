@@ -1,30 +1,41 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 function LoginPrompt() {
     const navigate = useNavigate();
 
-    useEffect(() => {
-        // Set document title
-        document.title = 'Connexion Requise | GoalTime';
-    }, []);
-
     return (
-        <div className="login-prompt-container">
-            <div className="login-prompt">
-                <h2 className="login-prompt-title">Accès Restreint</h2>
-                <p>Vous devez être connecté pour accéder à cette page.</p>
-                <div className="login-prompt-actions">
-                    <button onClick={() => navigate('/login')} className="btn-login">
-                        <i className="fas fa-lock-open"></i> Se connecter
+        <div className="min-h-screen flex items-center justify-center px-4">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                className="glass-card rounded-3xl p-12 max-w-md w-full text-center"
+            >
+                <span className="text-4xl mb-6 block">🔒</span>
+                <h2 className="heading-sm mb-3">Accès Restreint</h2>
+                <p className="body-sm mb-8">
+                    Connectez-vous pour accéder à cette page.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                        onClick={() => navigate('/login')}
+                        className="btn-primary flex-1"
+                    >
+                        Se connecter
+                        <span className="ml-1">→</span>
                     </button>
-                    <button onClick={() => navigate('/')} className="btn-back">
-                        Retour à l'accueil
+                    <button
+                        onClick={() => navigate('/')}
+                        className="btn-outline flex-1"
+                    >
+                        Retour
                     </button>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 }
 
-export default LoginPrompt; 
+export default LoginPrompt;

@@ -1,268 +1,109 @@
-/**
- * Service pour la gestion des réservations via les scripts PHP directs
- */
+import { API_BASE_URL } from './config';
 
-import { BASE_URL, API_BASE_URL, API_URL } from './config';
-
-/**
- * Récupère toutes les réservations
- * @returns {Promise} Promesse contenant les données des réservations
- */
 export const getAllReservations = async () => {
   try {
-    console.log('Chargement de toutes les réservations via script direct');
-    const response = await fetch(`${BASE_URL}/direct-get-reservations.php?include_terrain=true`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      }
+    const response = await fetch(`${API_BASE_URL}/reservations`, {
+      headers: { 'Accept': 'application/json' }
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erreur lors du chargement des réservations: ${response.status} ${errorText}`);
-    }
-
+    if (!response.ok) throw new Error(`Erreur ${response.status}`);
     const data = await response.json();
-    console.log('Réservations chargées avec succès:', data);
-    return { success: true, data: data };
+    return { success: true, data };
   } catch (error) {
-    console.error('Erreur dans getAllReservations:', error);
+    console.error('getAllReservations:', error);
     return { success: false, error: error.message, data: [] };
   }
 };
 
-/**
- * Récupère les réservations d'un utilisateur
- * @param {string} username Nom d'utilisateur
- * @returns {Promise} Promesse contenant les données des réservations
- */
 export const getUserReservations = async (username) => {
   try {
-    console.log(`Chargement des réservations pour l'utilisateur ${username} via script direct`);
-    const response = await fetch(`${BASE_URL}/direct-get-user-reservations.php?user_id=${username}&include_terrain=true`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      }
+    const response = await fetch(`${API_BASE_URL}/reservations/user/${encodeURIComponent(username)}`, {
+      headers: { 'Accept': 'application/json' }
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erreur lors du chargement des réservations: ${response.status} ${errorText}`);
-    }
-
+    if (!response.ok) throw new Error(`Erreur ${response.status}`);
     const data = await response.json();
-    console.log('Réservations utilisateur chargées avec succès:', data);
-    return { success: true, data: data };
+    return { success: true, data };
   } catch (error) {
-    console.error('Erreur dans getUserReservations:', error);
+    console.error('getUserReservations:', error);
     return { success: false, error: error.message, data: [] };
   }
 };
 
-/**
- * Crée une nouvelle réservation
- * @param {Object} reservationData Données de la réservation
- * @returns {Promise} Promesse contenant les données de la réservation créée
- */
 export const createReservation = async (reservationData) => {
   try {
-    console.log('Création d\'une réservation via script direct:', reservationData);
-    
-    // Convertir les données pour correspondre au format attendu par le backend
-    const dataToSend = {
-      ...reservationData,
-      // Utiliser à la fois price et prix pour assurer la compatibilité
-      prix: typeof reservationData.price === 'number' ? 
-        reservationData.price : 
-        (parseFloat(reservationData.price) || 0)
-    };
-    
-    console.log('Données formatées pour l\'envoi:', dataToSend);
-    
-    const response = await fetch(`${BASE_URL}/direct-create-reservation.php`, {
+    const response = await fetch(`${API_BASE_URL}/reservations`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(dataToSend)
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(reservationData)
     });
-
-    console.log('Statut de la réponse:', response.status);
-    
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Réponse d\'erreur reçue:', errorText);
-      throw new Error(`Erreur lors de la création de la réservation: ${response.status} ${errorText}`);
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || `Erreur ${response.status}`);
     }
-
     const result = await response.json();
-    console.log('Données de réponse:', result);
-    
-    if (!result.success) {
-      throw new Error(result.message || 'Erreur lors de la création de la réservation');
-    }
-
-    console.log('Réservation créée avec succès:', result.data);
-    return { success: true, data: result.data };
+    return { success: true, data: result };
   } catch (error) {
-    console.error('Erreur dans createReservation:', error);
+    console.error('createReservation:', error);
     return { success: false, error: error.message };
   }
 };
 
-/**
- * Met à jour une réservation existante
- * @param {number} id ID de la réservation
- * @param {Object} reservationData Données de la réservation à mettre à jour
- * @returns {Promise} Promesse contenant les données de la réservation mise à jour
- */
 export const updateReservation = async (id, reservationData) => {
   try {
-    console.log(`Mise à jour de la réservation ${id} via script direct:`, reservationData);
-    const response = await fetch(`${BASE_URL}/direct-update-reservation.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({ ...reservationData, id })
+    const response = await fetch(`${API_BASE_URL}/reservations/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(reservationData)
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erreur lors de la mise à jour de la réservation: ${response.status} ${errorText}`);
-    }
-
+    if (!response.ok) throw new Error('Erreur lors de la mise à jour');
     const result = await response.json();
-    if (!result.success) {
-      throw new Error(result.message || 'Erreur lors de la mise à jour de la réservation');
-    }
-
-    console.log('Réservation mise à jour avec succès:', result.data);
-    return { success: true, data: result.data };
+    return { success: true, data: result };
   } catch (error) {
-    console.error('Erreur dans updateReservation:', error);
+    console.error('updateReservation:', error);
     return { success: false, error: error.message };
   }
 };
 
-/**
- * Supprime une réservation
- * @param {number} id ID de la réservation
- * @param {string} userId ID de l'utilisateur (pour vérification)
- * @param {boolean} isAdmin Indique si l'utilisateur est un administrateur
- * @returns {Promise} Promesse contenant le résultat de la suppression
- */
-export const deleteReservation = async (id, userId = null, isAdmin = false) => {
+export const deleteReservation = async (id) => {
   try {
-    console.log(`Suppression de la réservation ${id} via script direct (admin: ${isAdmin})`);
-    let url = `${BASE_URL}/direct-delete-reservation.php?id=${id}`;
-    
-    if (userId) {
-      url += `&user_id=${userId}`;
-    }
-    
-    if (isAdmin) {
-      url += `&is_admin=true`;
-    }
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      }
+    const response = await fetch(`${API_BASE_URL}/reservations/${id}`, {
+      method: 'DELETE',
+      headers: { 'Accept': 'application/json' }
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erreur lors de la suppression de la réservation: ${response.status} ${errorText}`);
-    }
-
-    const result = await response.json();
-    if (!result.success) {
-      throw new Error(result.message || 'Erreur lors de la suppression de la réservation');
-    }
-
-    console.log('Réservation supprimée avec succès:', result);
-    return { success: true, data: result.data };
+    if (!response.ok) throw new Error('Erreur lors de la suppression');
+    return { success: true };
   } catch (error) {
-    console.error('Erreur dans deleteReservation:', error);
+    console.error('deleteReservation:', error);
     return { success: false, error: error.message };
   }
 };
 
-/**
- * Vérifie la disponibilité d'un créneau
- * @param {number} terrainId ID du terrain
- * @param {string} date Date au format YYYY-MM-DD
- * @param {string} timeSlot Créneau horaire (ex: "09:00-10:00")
- * @returns {Promise} Promesse contenant le résultat de la vérification
- */
 export const checkAvailability = async (terrainId, date, timeSlot) => {
   try {
-    console.log(`Vérification de la disponibilité pour le terrain ${terrainId}, date ${date}, créneau ${timeSlot}`);
-    const response = await fetch(`${BASE_URL}/direct-check-availability.php?terrain_id=${terrainId}&date=${date}&time_slot=${timeSlot}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      }
+    const response = await fetch(`${API_BASE_URL}/reservations/check-availability`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ terrain_id: terrainId, date, time_slot: timeSlot })
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erreur lors de la vérification de disponibilité: ${response.status} ${errorText}`);
-    }
-
+    if (!response.ok) throw new Error('Erreur lors de la vérification');
     const result = await response.json();
-    console.log('Résultat de la vérification de disponibilité:', result);
-    return { 
-      success: result.success, 
-      data: { available: result.available, message: result.message }
-    };
+    return { success: true, data: { available: result.available } };
   } catch (error) {
-    console.error('Erreur dans checkAvailability:', error);
+    console.error('checkAvailability:', error);
     return { success: false, error: error.message, data: { available: false } };
   }
 };
 
-/**
- * Marque une réservation comme payée
- * @param {number} id ID de la réservation
- * @param {string} userId ID de l'utilisateur (pour vérification)
- * @returns {Promise} Promesse contenant le résultat de l'opération
- */
-export const markAsPaid = async (id, userId = null) => {
+export const markAsPaid = async (id) => {
   try {
-    console.log(`Marquage de la réservation ${id} comme payée via script direct`);
-    let url = `${BASE_URL}/direct-mark-paid.php?id=${id}`;
-    if (userId) {
-      url += `&user_id=${userId}`;
-    }
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      }
+    const response = await fetch(`${API_BASE_URL}/reservations/${id}/pay`, {
+      method: 'PUT',
+      headers: { 'Accept': 'application/json' }
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erreur lors du marquage comme payée: ${response.status} ${errorText}`);
-    }
-
+    if (!response.ok) throw new Error('Erreur lors du marquage comme payée');
     const result = await response.json();
-    if (!result.success) {
-      throw new Error(result.message || 'Erreur lors du marquage comme payée');
-    }
-
-    console.log('Réservation marquée comme payée avec succès:', result);
     return { success: true, data: result.data };
   } catch (error) {
-    console.error('Erreur dans markAsPaid:', error);
+    console.error('markAsPaid:', error);
     return { success: false, error: error.message };
   }
-}; 
+};

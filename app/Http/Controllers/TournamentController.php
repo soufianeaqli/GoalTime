@@ -8,30 +8,22 @@ use Illuminate\Support\Facades\Validator;
 
 class TournamentController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $tournaments = Tournament::all();
         return response()->json($tournaments);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function show(string $id)
     {
-        //
+        $tournament = Tournament::findOrFail($id);
+        return response()->json($tournament);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        // Vérifier si l'utilisateur est admin
-        if (!auth()->user() || auth()->user()->role !== 'admin') {
+        $role = $request->input('role');
+        if ($role !== 'admin') {
             return response()->json(['message' => 'Non autorisé'], 403);
         }
 
@@ -59,35 +51,16 @@ class TournamentController extends Controller
             'format' => $request->format,
             'entry_fee' => $request->entry_fee,
             'teams' => [],
+            'image' => $request->input('image'),
         ]);
 
-        return response()->json($tournament, 201);
+        return response()->json(['success' => true, 'tournament' => $tournament], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        $tournament = Tournament::findOrFail($id);
-        return response()->json($tournament);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
-        // Vérifier si l'utilisateur est admin
-        if (!auth()->user() || auth()->user()->role !== 'admin') {
+        $role = $request->input('role');
+        if ($role !== 'admin') {
             return response()->json(['message' => 'Non autorisé'], 403);
         }
 
@@ -109,18 +82,18 @@ class TournamentController extends Controller
         }
 
         $tournament->update($request->all());
-        return response()->json($tournament);
+        return response()->json(['success' => true, 'tournament' => $tournament]);
     }
 
-    /**
-     * Register a team for a tournament.
-     */
+    public function destroy(string $id)
+    {
+        $tournament = Tournament::findOrFail($id);
+        $tournament->delete();
+        return response()->json(['success' => true]);
+    }
+
     public function registerTeam(Request $request, string $id)
     {
-        if (!auth()->user()) {
-            return response()->json(['message' => 'Non authentifié'], 401);
-        }
-
         $tournament = Tournament::findOrFail($id);
 
         $validator = Validator::make($request->all(), [
@@ -128,30 +101,29 @@ class TournamentController extends Controller
             'captain_name' => 'required|string',
             'phone_number' => 'required|string',
             'email' => 'required|email',
+            'user_id' => 'nullable',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // Vérifier si le tournoi est complet
         if ($tournament->registered_teams >= $tournament->max_teams) {
-            return response()->json(['message' => 'Le tournoi est complet'], 422);
+            return response()->json(['success' => false, 'message' => 'Le tournoi est complet'], 422);
         }
 
-        // Vérifier si l'équipe est déjà inscrite
         $teams = $tournament->teams ?? [];
         if (collect($teams)->contains('email', $request->email)) {
-            return response()->json(['message' => 'Vous êtes déjà inscrit à ce tournoi'], 422);
+            return response()->json(['success' => false, 'message' => 'Vous êtes déjà inscrit à ce tournoi'], 422);
         }
 
-        // Ajouter l'équipe
         $teams[] = [
             'id' => time(),
             'name' => $request->team_name,
             'captain' => $request->captain_name,
             'phone' => $request->phone_number,
             'email' => $request->email,
+            'user_id' => $request->input('user_id'),
             'registration_date' => now()->toDateString(),
         ];
 
@@ -159,53 +131,29 @@ class TournamentController extends Controller
         $tournament->registered_teams = count($teams);
         $tournament->save();
 
-        return response()->json($tournament);
+        return response()->json(['success' => true, 'tournament' => $tournament]);
     }
 
-    /**
-     * Remove a team from a tournament.
-     */
     public function unregisterTeam(Request $request, string $id)
     {
-        if (!auth()->user()) {
-            return response()->json(['message' => 'Non authentifié'], 401);
-        }
-
         $tournament = Tournament::findOrFail($id);
-        $teamId = $request->team_id;
+        $userId = $request->input('user_id');
 
         $teams = $tournament->teams ?? [];
-        
-        // Vérifier si l'utilisateur est autorisé à désinscrire l'équipe
-        $team = collect($teams)->firstWhere('id', $teamId);
-        if (!$team || ($team['email'] !== auth()->user()->email && auth()->user()->role !== 'admin')) {
-            return response()->json(['message' => 'Non autorisé'], 403);
+        $team = collect($teams)->firstWhere('user_id', $userId);
+
+        if (!$team) {
+            return response()->json(['success' => false, 'message' => 'Équipe non trouvée'], 404);
         }
 
-        $filteredTeams = array_filter($teams, function($team) use ($teamId) {
-            return $team['id'] != $teamId;
+        $filteredTeams = array_filter($teams, function ($t) use ($userId) {
+            return $t['user_id'] != $userId;
         });
 
         $tournament->teams = array_values($filteredTeams);
         $tournament->registered_teams = count($filteredTeams);
         $tournament->save();
 
-        return response()->json($tournament);
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        // Vérifier si l'utilisateur est admin
-        if (!auth()->user() || auth()->user()->role !== 'admin') {
-            return response()->json(['message' => 'Non autorisé'], 403);
-        }
-
-        $tournament = Tournament::findOrFail($id);
-        $tournament->delete();
-
-        return response()->json(null, 204);
+        return response()->json(['success' => true, 'tournament' => $tournament]);
     }
 }

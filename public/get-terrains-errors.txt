@@ -11,3 +11,15 @@
 2026-04-08 17:46:31 - Error: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for containers-us-west-123.railway.app   # <-- valeur MYSQLHOST Railway failed: Hôte inconnu. 
 2026-04-08 17:52:00 - Error: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for containers-us-west-123.railway.app   # <-- valeur MYSQLHOST Railway failed: Hôte inconnu. 
 2026-04-08 17:52:00 - Error: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for containers-us-west-123.railway.app   # <-- valeur MYSQLHOST Railway failed: Hôte inconnu. 
+2026-07-12 01:25:33 - Error: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for containers-us-west-123.railway.app   # <-- valeur MYSQLHOST Railway failed: Hôte inconnu. 
+2026-07-12 01:25:33 - Error: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for containers-us-west-123.railway.app   # <-- valeur MYSQLHOST Railway failed: Hôte inconnu. 
+2026-07-12 01:25:45 - Error: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for containers-us-west-123.railway.app   # <-- valeur MYSQLHOST Railway failed: Hôte inconnu. 
+2026-07-12 01:25:45 - Error: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for containers-us-west-123.railway.app   # <-- valeur MYSQLHOST Railway failed: Hôte inconnu. 
+2026-07-12 01:36:09 - Error: Impossible de charger les variables d'environnement essentielles
+2026-07-12 01:36:09 - Error: Impossible de charger les variables d'environnement essentielles
+2026-07-12 01:37:04 - Error: Impossible de charger les variables d'environnement essentielles
+2026-07-12 01:37:04 - Error: Impossible de charger les variables d'environnement essentielles
+2026-07-12 01:39:57 - Error: Impossible de charger les variables d'environnement essentielles
+2026-07-12 01:39:57 - Error: Impossible de charger les variables d'environnement essentielles
+2026-07-12 01:39:57 - Error: Impossible de charger les variables d'environnement essentielles
+2026-07-12 01:39:57 - Error: Impossible de charger les variables d'environnement essentielles

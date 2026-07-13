@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    Calendar, MapPin, DollarSign, Clock, Info, 
-    Trash2, Plus, Image as ImageIcon, XCircle, CheckCircle, AlertTriangle 
+import {
+    Calendar, MapPin, DollarSign, Clock, Info,
+    Trash2, Plus, Image as ImageIcon, XCircle, CheckCircle, AlertTriangle
 } from 'lucide-react';
 import LoginPrompt from './LoginPrompt';
+import FlyingBall from '../components/FlyingBall';
+import Toast from '../components/Toast';
 import * as reservationService from '../services/reservationService';
-import { BASE_URL } from '../services/config';
+import { API_BASE_URL } from '../services/config';
+import * as terrainService from '../services/terrainService';
 
 function Terrain({ addReservation, reservations, user }) {
     const [terrains, setTerrains] = useState([]);
@@ -16,8 +19,9 @@ function Terrain({ addReservation, reservations, user }) {
     const [confirmationMessage, setConfirmationMessage] = useState('');
     const [selectedTerrain, setSelectedTerrain] = useState(null);
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+    const [showFlyingBall, setShowFlyingBall] = useState(false);
     const navigate = useNavigate();
-    
+
     // Admin state
     const [showAddTerrainForm, setShowAddTerrainForm] = useState(false);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
@@ -28,7 +32,7 @@ function Terrain({ addReservation, reservations, user }) {
     useEffect(() => {
         const fetchTerrains = async () => {
             try {
-                const response = await fetch(`${BASE_URL}/direct-get-terrains.php`, {
+                const response = await fetch(`${API_BASE_URL}/terrains`, {
                     method: 'GET',
                     headers: { 'Accept': 'application/json' }
                 });
@@ -79,8 +83,8 @@ function Terrain({ addReservation, reservations, user }) {
         try {
             const formData = new FormData();
             formData.append('image', file);
-            const response = await fetch(`${BASE_URL}/direct-upload.php`, { method: 'POST', body: formData });
-            
+            const response = await fetch(`${API_BASE_URL}/upload-image`, { method: 'POST', body: formData });
+
             if (response.ok) {
                 const responseData = await response.json();
                 if (responseData && responseData.url) {
@@ -105,7 +109,7 @@ function Terrain({ addReservation, reservations, user }) {
 
         try {
             const terrainData = { ...newTerrain, prix: Number(newTerrain.prix) };
-            const response = await fetch(`${BASE_URL}/direct-add.php`, {
+            const response = await fetch(`${API_BASE_URL}/terrains`, {
                 method: 'POST',
                 headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify(terrainData)
@@ -134,7 +138,7 @@ function Terrain({ addReservation, reservations, user }) {
 
     const handleConfirmDelete = async () => {
         try {
-            const response = await fetch(`${BASE_URL}/direct-delete.php?id=${terrainToDelete}`, { method: 'GET' });
+            const response = await fetch(`${API_BASE_URL}/terrains/${terrainToDelete}`, { method: 'DELETE' });
             if (response.ok) {
                 setTerrains(prev => prev.filter(terrain => terrain.id !== terrainToDelete));
                 setShowDeleteConfirmation(false);
@@ -152,6 +156,14 @@ function Terrain({ addReservation, reservations, user }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (formData.date === today) {
+            const slotHour = parseInt(formData.timeSlot.split(':')[0], 10);
+            if (slotHour < currentHour) {
+                setConfirmationMessage('Ce créneau est déjà passé pour aujourd\'hui.');
+                setTimeout(() => setConfirmationMessage(''), 3000);
+                return;
+            }
+        }
         try {
             const availabilityResponse = await reservationService.checkAvailability(selectedTerrain.id, formData.date, formData.timeSlot);
             if (!availabilityResponse.data.available) {
@@ -171,6 +183,7 @@ function Terrain({ addReservation, reservations, user }) {
             addReservation(response.data);
             setIsReservationModalOpen(false);
             setFormData({ name: '', email: '', date: '', timeSlot: '' });
+            setShowFlyingBall(true);
             setConfirmationMessage('Votre réservation a été enregistrée avec succès.');
             setTimeout(() => setConfirmationMessage(''), 5000);
         } catch (error) {
@@ -180,95 +193,150 @@ function Terrain({ addReservation, reservations, user }) {
     };
 
     const today = new Date().toISOString().split('T')[0];
-    const timeSlots = ["09:00-10:00", "10:00-11:00", "11:00-12:00", "15:00-16:00", "16:00-17:00", "17:00-18:00", "18:00-19:00", "19:00-20:00", "20:00-21:00", "21:00-22:00"];
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinutes = now.getMinutes();
+    const timeSlots = ["10:00-11:00", "11:00-12:00", "12:00-13:00", "13:00-14:00", "14:00-15:00", "15:00-16:00", "16:00-17:00", "17:00-18:00", "18:00-19:00", "19:00-20:00", "20:00-21:00", "21:00-22:00", "22:00-23:00", "23:00-00:00"];
 
     const getImageUrl = (imageUrl) => {
         if (!imageUrl) return '/placeholder.jpg';
-        if (imageUrl.startsWith('/storage')) return `${BASE_URL}${imageUrl}`;
+        if (imageUrl.startsWith('/storage')) return `${API_BASE_URL.replace('/api', '')}${imageUrl}`;
         return imageUrl;
     };
 
     // Animation Variants
-    const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
-    const cardVariants = { 
-        hidden: { opacity: 0, y: 50 }, 
-        visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }, 
-        hover: { y: -10, transition: { duration: 0.3 } } 
+    const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.12 } } };
+    const cardVariants = {
+        hidden: { opacity: 0, y: 60, scale: 0.95 },
+        visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } },
+        hover: { y: -8, transition: { duration: 0.35, ease: "easeOut" } }
+    };
+    const modalOverlay = { hidden: { opacity: 0 }, visible: { opacity: 1 }, exit: { opacity: 0 } };
+    const modalContent = {
+        hidden: { opacity: 0, scale: 0.92, y: 30 },
+        visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
+        exit: { opacity: 0, scale: 0.92, y: 30, transition: { duration: 0.25 } }
     };
 
     return (
-        <div className="w-full">
+        <div className="w-full min-h-screen">
+            <FlyingBall show={showFlyingBall} onComplete={() => { setShowFlyingBall(false); navigate('/reservation'); }} />
             {showLoginPrompt && <LoginPrompt />}
 
-            <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
-                <div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 mb-2">
-                        Nos Terrains
-                    </h1>
-                    <p className="text-slate-600 dark:text-slate-400">Réservez les meilleurs terrains de mini-foot de la ville.</p>
+            {/* Header */}
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-12 bg-gradient-to-b from-primary to-primary-light rounded-full" />
+                    <div>
+                        <h1 className="text-3xl sm:text-4xl font-extrabold text-gradient">Nos Terrains</h1>
+                        <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Réservez les meilleurs terrains de mini-foot en quelques clics.</p>
+                    </div>
                 </div>
                 {user && user.role === 'admin' && (
                     <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.4, delay: 0.3 }}
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.96 }}
+                        className="btn-primary gap-2"
                         onClick={() => setShowAddTerrainForm(true)}
                     >
                         <Plus size={20} /> Ajouter un terrain
                     </motion.button>
                 )}
-            </div>
+            </motion.div>
 
-            <AnimatePresence>
-                {confirmationMessage && (
-                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 px-4 py-3 rounded-xl mb-6 flex items-center gap-3">
-                        <CheckCircle size={20} className="text-emerald-400" />
-                        {confirmationMessage}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Confirmation Toast */}
+            <Toast message={confirmationMessage} onClose={() => setConfirmationMessage('')} />
 
-            <motion.div 
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            {/* Terrain Grid */}
+            <motion.div
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
                 variants={containerVariants}
-                initial="hidden" animate="visible"
+                initial="hidden"
+                animate="visible"
             >
                 {terrains && terrains.map(terrain => {
                     if (!terrain) return null;
                     return (
-                        <motion.div 
-                            key={terrain.id} 
+                        <motion.div
+                            key={terrain.id}
                             variants={cardVariants}
                             whileHover="hover"
-                            className="bg-white dark:bg-[#121212] border border-black/5 dark:border-white/5 rounded-3xl overflow-hidden shadow-2xl group flex flex-col"
+                            className="glass-card-hover group flex flex-col overflow-hidden"
                         >
-                            <div className="relative h-56 overflow-hidden">
-                                <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-transparent z-10"></div>
-                                <img src={getImageUrl(terrain.image)} alt={terrain.titre} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" />
-                                
-                                <div className="absolute top-4 right-4 z-20 bg-emerald-500 text-slate-900 dark:text-white px-3 py-1 rounded-full font-bold text-sm shadow-lg flex items-center gap-1">
-                                    <DollarSign size={14} /> {terrain.prix} /h
+                            {/* Image Section */}
+                            <div className="relative h-40 overflow-hidden rounded-t-2xl">
+                                <div className="absolute inset-0 bg-gradient-to-t from-dark-900/80 via-dark-900/20 to-transparent z-10 transition-opacity duration-300" />
+                                <img
+                                    src={getImageUrl(terrain.image)}
+                                    alt={terrain.titre}
+                                    className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-out"
+                                />
+
+                                {/* Price Badge */}
+                                <div className="absolute top-4 right-4 z-20">
+                                    <div className="bg-dark-900/70 backdrop-blur-md border border-gold/30 text-gold px-3.5 py-1.5 rounded-xl font-bold text-sm flex items-center gap-1.5 shadow-lg">
+                                        <DollarSign size={14} className="text-gold" /> {terrain.prix} <span className="text-xs font-normal text-gray-400">/h</span>
+                                    </div>
                                 </div>
+
+                                {/* Admin Delete */}
                                 {user && user.role === 'admin' && (
-                                    <button onClick={(e) => { e.preventDefault(); handleDeleteConfirmation(terrain.id); }} className="absolute top-4 left-4 z-20 bg-red-500 hover:bg-red-600 text-slate-900 dark:text-white p-2 rounded-full shadow-lg transition-transform hover:scale-110">
+                                    <motion.button
+                                        whileHover={{ scale: 1.15 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={(e) => { e.preventDefault(); handleDeleteConfirmation(terrain.id); }}
+                                        className="absolute top-4 left-4 z-20 bg-red-500/90 hover:bg-red-500 text-white p-2 rounded-xl shadow-lg backdrop-blur-sm transition-colors"
+                                    >
                                         <Trash2 size={16} />
-                                    </button>
+                                    </motion.button>
                                 )}
+
+                                {/* Subtle badge at bottom */}
+                                <div className="absolute bottom-3 left-4 z-20">
+                                    <span className="badge-primary text-[11px]">
+                                        <MapPin size={11} /> Terrain Disponible
+                                    </span>
+                                </div>
                             </div>
 
-                            <div className="p-6 relative z-20 -mt-6 flex flex-col flex-grow">
-                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{terrain.titre}</h3>
-                                <p className="text-slate-600 dark:text-slate-400 text-sm mb-6 flex-grow line-clamp-3">{terrain.description}</p>
-                                
+                            {/* Content */}
+                            <div className="p-4 flex flex-col flex-grow relative">
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1 group-hover:text-primary transition-colors duration-300">
+                                    {terrain.titre}
+                                </h3>
+                                <p className="text-gray-500 dark:text-gray-400 text-xs mb-4 flex-grow line-clamp-2 leading-relaxed">
+                                    {terrain.description}
+                                </p>
+
+                                {/* Actions */}
                                 <div className="flex gap-3 mt-auto">
-                                    <button onClick={() => navigate(`/terrain/${terrain.id}`)} className="flex items-center justify-center bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:bg-white/10 border border-black/10 dark:border-white/10 w-12 h-12 rounded-xl transition-colors">
-                                        <Info size={20} className="text-slate-700 dark:text-slate-300" />
-                                    </button>
-                                    
+                                    <motion.button
+                                        whileHover={{ scale: 1.08 }}
+                                        whileTap={{ scale: 0.92 }}
+                                        onClick={() => navigate(`/terrain/${terrain.id}`)}
+                                        className="btn-secondary !h-10 !w-10 !p-0 justify-center shrink-0"
+                                        title="Voir les détails"
+                                    >
+                                        <Info size={18} />
+                                    </motion.button>
+
                                     {user && user.role !== 'admin' && (
-                                        <button onClick={() => handleReserveClick(terrain.id)} className="flex-1 flex justify-center items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white h-12 rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]">
-                                            <Calendar size={18} /> Réserver
-                                        </button>
+                                        <motion.button
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.97 }}
+                                            onClick={() => handleReserveClick(terrain.id)}
+                                            className="btn-primary flex-1 gap-2"
+                                        >
+                                            <Calendar size={17} /> Réserver
+                                        </motion.button>
                                     )}
                                 </div>
                             </div>
@@ -277,106 +345,226 @@ function Terrain({ addReservation, reservations, user }) {
                 })}
             </motion.div>
 
-            {/* Modals */}
+            {/* Empty State */}
+            {terrains && terrains.length === 0 && (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="glass-card text-center py-20 px-8"
+                >
+                    <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                        <MapPin size={36} className="text-primary-light" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Aucun terrain disponible</h3>
+                    <p className="text-gray-500 dark:text-gray-400">Les terrains apparaîtront ici une fois ajoutés.</p>
+                </motion.div>
+            )}
+
+            {/* ==================== MODALS ==================== */}
             <AnimatePresence>
                 {(isReservationModalOpen || showAddTerrainForm || showDeleteConfirmation) && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white dark:bg-black/60 backdrop-blur-sm" onClick={() => {
-                            if (isReservationModalOpen) handleCloseReservationModal();
-                            if (showAddTerrainForm) setShowAddTerrainForm(false);
-                            if (showDeleteConfirmation) setShowDeleteConfirmation(false);
-                        }} />
-                        
-                        {/* Reservation Modal */}
+                        {/* Overlay */}
+                        <motion.div
+                            variants={modalOverlay}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            className="absolute inset-0 bg-dark-900/70 backdrop-blur-md"
+                            onClick={() => {
+                                if (isReservationModalOpen) handleCloseReservationModal();
+                                if (showAddTerrainForm) setShowAddTerrainForm(false);
+                                if (showDeleteConfirmation) setShowDeleteConfirmation(false);
+                            }}
+                        />
+
+                        {/* ========== Reservation Modal ========== */}
                         {isReservationModalOpen && selectedTerrain && (
-                            <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} className="relative bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
-                                <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-black/5 dark:bg-white/5">
-                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><MapPin className="text-emerald-400"/> Réserver: {selectedTerrain.titre}</h2>
-                                    <button onClick={handleCloseReservationModal} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors"><XCircle size={24} /></button>
+                            <motion.div
+                                variants={modalContent}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                className="relative glass-card w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden"
+                            >
+                                {/* Header */}
+                                <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-primary/5">
+                                    <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
+                                        <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
+                                            <MapPin size={18} className="text-primary-light" />
+                                        </div>
+                                        <span>Réserver <span className="text-primary">{selectedTerrain.titre}</span></span>
+                                    </h2>
+                                    <motion.button
+                                        whileHover={{ scale: 1.1, rotate: 90 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={handleCloseReservationModal}
+                                        className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
+                                    >
+                                        <XCircle size={24} />
+                                    </motion.button>
                                 </div>
-                                <div className="p-6 overflow-y-auto custom-scrollbar">
+
+                                {/* Body */}
+                                <div className="p-6 overflow-y-auto">
                                     <form onSubmit={handleSubmit} className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="col-span-2">
-                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nom complet</label>
-                                                <input type="text" name="name" value={formData.name} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
+                                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Nom complet</label>
+                                                <input type="text" name="name" value={formData.name} onChange={handleChange} required className="input-field" placeholder="Votre nom" />
                                             </div>
                                             <div className="col-span-2">
-                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
-                                                <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
+                                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Email</label>
+                                                <input type="email" name="email" value={formData.email} onChange={handleChange} required className="input-field" placeholder="votre@email.com" />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date</label>
-                                                <input type="date" name="date" min={today} value={formData.date} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 [color-scheme:dark]" />
+                                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Date</label>
+                                                <input type="date" name="date" min={today} value={formData.date} onChange={handleChange} required className="input-field [color-scheme:dark]" />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Horaire</label>
-                                                <select name="timeSlot" value={formData.timeSlot} onChange={handleChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
-                                                    <option value="">Choisir</option>
+                                                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Horaire</label>
+                                                <select name="timeSlot" value={formData.timeSlot} onChange={handleChange} required className="input-field">
+                                                    <option value="">Choisir un horaire</option>
                                                     {timeSlots.map(slot => {
                                                         const isReserved = reservations.some(r => r.terrain_id === selectedTerrain.id && r.date === formData.date && r.time_slot === slot);
-                                                        return <option key={slot} value={slot} disabled={isReserved} className={isReserved ? 'text-red-400' : ''}>{slot} {isReserved ? '(Complet)' : ''}</option>;
+                                                        const isPast = formData.date === today && parseInt(slot.split(':')[0], 10) < currentHour;
+                                                        const disabled = isReserved || isPast;
+                                                        return (
+                                                            <option key={slot} value={slot} disabled={disabled} className={isReserved ? 'text-red-400' : isPast ? 'text-gray-400' : ''}>
+                                                                {slot} {isReserved ? '(Complet)' : isPast ? '(Passé)' : ''}
+                                                            </option>
+                                                        );
                                                     })}
                                                 </select>
                                             </div>
                                         </div>
-                                        <div className="pt-4 flex gap-3">
-                                            <button type="button" onClick={handleCloseReservationModal} className="flex-1 px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 text-slate-900 dark:text-white hover:bg-black/5 dark:bg-white/5 transition-colors">Annuler</button>
-                                            <button type="submit" className="flex-1 px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white font-medium shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-colors">Confirmer</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </motion.div>
-                        )}
 
-                        {/* Add Terrain Modal */}
-                        {showAddTerrainForm && (
-                            <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} className="relative bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
-                                <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-black/5 dark:bg-white/5">
-                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><MapPin className="text-emerald-400"/> Nouveau Terrain</h2>
-                                    <button onClick={() => setShowAddTerrainForm(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors"><XCircle size={24} /></button>
-                                </div>
-                                <div className="p-6 overflow-y-auto custom-scrollbar">
-                                    <form onSubmit={handleAddTerrain} className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Image du terrain</label>
-                                            <div className="border-2 border-dashed border-black/10 dark:border-white/10 rounded-xl p-4 text-center hover:bg-black/5 dark:bg-white/5 transition-colors relative cursor-pointer group">
-                                                <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                                                {imagePreview ? <img src={imagePreview} alt="Aperçu" className="h-32 mx-auto object-cover rounded-lg" /> : <div className="text-slate-600 dark:text-slate-400 py-6"><ImageIcon size={32} className="mx-auto mb-2 opacity-50 group-hover:opacity-100 text-emerald-400" /><p className="text-sm">Cliquez ou glissez une image</p></div>}
+                                        {/* Pricing Summary */}
+                                        <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm text-gray-500 dark:text-gray-400">Tarif horaire</span>
+                                                <span className="text-lg font-bold text-primary">{selectedTerrain.prix} DH</span>
                                             </div>
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Titre</label>
-                                            <input type="text" name="titre" value={newTerrain.titre} onChange={handleNewTerrainChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Prix (DH/heure)</label>
-                                            <input type="number" name="prix" value={newTerrain.prix} onChange={handleNewTerrainChange} required className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
-                                            <textarea name="description" value={newTerrain.description} onChange={handleNewTerrainChange} required rows="3" className="w-full bg-white/90 dark:bg-black/50 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"></textarea>
-                                        </div>
-                                        <div className="pt-4 flex gap-3">
-                                            <button type="button" onClick={() => setShowAddTerrainForm(false)} className="flex-1 px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 text-slate-900 dark:text-white hover:bg-black/5 dark:bg-white/5 transition-colors">Annuler</button>
-                                            <button type="submit" className="flex-1 px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-900 dark:text-white font-medium shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-colors">Ajouter</button>
+
+                                        {/* Actions */}
+                                        <div className="pt-3 flex gap-3">
+                                            <button type="button" onClick={handleCloseReservationModal} className="btn-secondary flex-1">
+                                                Annuler
+                                            </button>
+                                            <button type="submit" className="btn-primary flex-1">
+                                                Confirmer la réservation
+                                            </button>
                                         </div>
                                     </form>
                                 </div>
                             </motion.div>
                         )}
 
-                        {/* Delete Confirmation Modal */}
-                        {showDeleteConfirmation && (
-                            <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} className="relative bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center">
-                                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
-                                    <AlertTriangle size={32} className="text-red-500" />
+                        {/* ========== Add Terrain Modal ========== */}
+                        {showAddTerrainForm && (
+                            <motion.div
+                                variants={modalContent}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                className="relative glass-card w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden"
+                            >
+                                {/* Header */}
+                                <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-primary/5">
+                                    <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
+                                        <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
+                                            <MapPin size={18} className="text-primary-light" />
+                                        </div>
+                                        Nouveau Terrain
+                                    </h2>
+                                    <motion.button
+                                        whileHover={{ scale: 1.1, rotate: 90 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={() => setShowAddTerrainForm(false)}
+                                        className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
+                                    >
+                                        <XCircle size={24} />
+                                    </motion.button>
                                 </div>
-                                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Confirmer la suppression</h2>
-                                <p className="text-slate-600 dark:text-slate-400 mb-6">Êtes-vous sûr de vouloir supprimer définitivement ce terrain ?</p>
+
+                                {/* Body */}
+                                <div className="p-6 overflow-y-auto">
+                                    <form onSubmit={handleAddTerrain} className="space-y-4">
+                                        {/* Image Upload */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Image du terrain</label>
+                                            <div className="border-2 border-dashed border-gray-200 dark:border-white/10 rounded-2xl p-4 text-center hover:border-primary/40 hover:bg-primary/5 transition-all duration-300 relative cursor-pointer group overflow-hidden">
+                                                <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                                {imagePreview ? (
+                                                    <img src={imagePreview} alt="Aperçu" className="h-36 mx-auto object-cover rounded-xl" />
+                                                ) : (
+                                                    <div className="py-8">
+                                                        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-3 group-hover:bg-primary/20 transition-colors">
+                                                            <ImageIcon size={24} className="text-primary-light" />
+                                                        </div>
+                                                        <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Cliquez ou glissez une image</p>
+                                                        <p className="text-xs text-gray-400 mt-1">JPG, PNG — Max 5MB</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Titre</label>
+                                            <input type="text" name="titre" value={newTerrain.titre} onChange={handleNewTerrainChange} required className="input-field" placeholder="Nom du terrain" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Prix (DH/heure)</label>
+                                            <input type="number" name="prix" value={newTerrain.prix} onChange={handleNewTerrainChange} required className="input-field" placeholder="Ex: 150" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Description</label>
+                                            <textarea name="description" value={newTerrain.description} onChange={handleNewTerrainChange} required rows="3" className="input-field resize-none" placeholder="Décrivez le terrain..." />
+                                        </div>
+
+                                        {/* Actions */}
+                                        <div className="pt-3 flex gap-3">
+                                            <button type="button" onClick={() => setShowAddTerrainForm(false)} className="btn-secondary flex-1">
+                                                Annuler
+                                            </button>
+                                            <button type="submit" className="btn-primary flex-1">
+                                                Ajouter le terrain
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* ========== Delete Confirmation Modal ========== */}
+                        {showDeleteConfirmation && (
+                            <motion.div
+                                variants={modalContent}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                className="relative glass-card w-full max-w-sm p-8 text-center"
+                            >
+                                <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-5">
+                                    <AlertTriangle size={30} className="text-red-500" />
+                                </div>
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Confirmer la suppression</h2>
+                                <p className="text-gray-500 dark:text-gray-400 mb-7 text-sm leading-relaxed">
+                                    Êtes-vous sûr de vouloir supprimer définitivement ce terrain ? Cette action est irréversible.
+                                </p>
                                 <div className="flex gap-3">
-                                    <button onClick={() => setShowDeleteConfirmation(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-black/10 dark:border-white/10 text-slate-900 dark:text-white hover:bg-black/5 dark:bg-white/5 transition-colors">Annuler</button>
-                                    <button onClick={handleConfirmDelete} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-slate-900 dark:text-white font-medium shadow-[0_0_15px_rgba(239,68,68,0.3)] transition-colors">Supprimer</button>
+                                    <button onClick={() => setShowDeleteConfirmation(false)} className="btn-secondary flex-1">
+                                        Annuler
+                                    </button>
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.97 }}
+                                        onClick={handleConfirmDelete}
+                                        className="flex-1 px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors shadow-lg shadow-red-500/20"
+                                    >
+                                        Supprimer
+                                    </motion.button>
                                 </div>
                             </motion.div>
                         )}

@@ -1,19 +1,25 @@
-import { Route, Routes, Navigate } from "react-router-dom";
+import { Route, Routes, Navigate, Link } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import Header from "./Header/Header";
+import Footer from "./components/Footer";
 import Accueil from "./Lwst/Accueil";
 import Terrain from "./Lwst/Terrain";
 import TerrainDetail from "./Lwst/TerrainDetail";
 import Reservation from "./Lwst/Reservation";
 import Contact from "./Lwst/Contact";
-import Tournoi from './Lwst/Tournoi';
 import Login from './Lwst/Login';
-import LoginPrompt from './Lwst/LoginPrompt';
-import TournoiDetail from './Lwst/TournoiDetail';
 import Parametres from './Lwst/Parametres';
-import * as reservationService from "./services/reservationService";
+import MatchAnnonce from './Lwst/MatchAnnonce';
+import AnnonceDetail from './Lwst/AnnonceDetail';
+import CreateAnnonce from './Lwst/CreateAnnonce';
+import CaptainDashboard from './Lwst/CaptainDashboard';
 
-import { BASE_URL } from './services/config';
+import TournamentWizard from './Lwst/TournamentWizard';
+import TournamentPublicPage from './Lwst/TournamentPublicPage';
+import TournamentDashboard from './Lwst/TournamentDashboard';
+import PublicProfile from './Lwst/PublicProfile';
+import GoogleCallback from './Lwst/GoogleCallback';
+import { API_BASE_URL } from './services/config';
 
 function App() {
   const [reservations, setReservations] = useState(() => {
@@ -22,71 +28,16 @@ function App() {
   });
   const [user, setUser] = useState(null);
   const [terrains, setTerrains] = useState([]);
-  
-  // Theme State
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved) return saved === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+  const [loading, setLoading] = useState(true);
+
+  const isDarkMode = true;
 
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDarkMode]);
-
-  const toggleTheme = () => setIsDarkMode(!isDarkMode);
-
-  const [tournois, setTournois] = useState(() => {
-    const saved = localStorage.getItem('tournois');
-    if (saved) {
-      return JSON.parse(saved);
-    }
-    return [
-      {
-        id: 1,
-        name: "Coupe de la Ville",
-        date: "2024-04-15",
-        maxTeams: 16,
-        registeredTeams: 8,
-        prizePool: "10000 DH",
-        description: "Tournoi annuel opposant les meilleures équipes",
-        format: "Élimination directe",
-        entryFee: "500 DH"
-      },
-      {
-        id: 2,
-        name: "Championnat Amateur",
-        date: "2024-05-01",
-        maxTeams: 12,
-        registeredTeams: 6,
-        prizePool: "5000 DH",
-        description: "Tournoi réservé aux équipes amateurs",
-        format: "Phase de groupes + Élimination directe",
-        entryFee: "300 DH"
-      },
-      {
-        id: 3,
-        name: "Tournoi Ramadan",
-        date: "2024-03-20",
-        maxTeams: 20,
-        registeredTeams: 12,
-        prizePool: "15000 DH",
-        description: "Grand tournoi nocturne pendant le mois de Ramadan",
-        format: "Phase de groupes + Élimination directe",
-        entryFee: "600 DH"
-      }
-    ];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('tournois', JSON.stringify(tournois));
-  }, [tournois]);
+    document.documentElement.classList.add('dark');
+    localStorage.setItem('theme', 'dark');
+    const timer = setTimeout(() => setLoading(false), 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -104,34 +55,19 @@ function App() {
           });
         }
       } catch (error) {
-        console.error('Erreur lors du chargement des données utilisateur:', error);
         localStorage.removeItem('user');
       }
     }
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('allReservations', JSON.stringify(reservations));
-  }, [reservations]);
+  useEffect(() => { localStorage.setItem('allReservations', JSON.stringify(reservations)); }, [reservations]);
 
-  // Charger les terrains depuis l'API
   useEffect(() => {
     const fetchTerrains = async () => {
       try {
-        const response = await fetch(`${BASE_URL}/direct-get-terrains.php`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setTerrains(data);
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des terrains:', error);
-      }
+        const response = await fetch(`${API_BASE_URL}/terrains`, { headers: { 'Accept': 'application/json' } });
+        if (response.ok) setTerrains(await response.json());
+      } catch (error) { console.error(error); }
     };
     fetchTerrains();
   }, []);
@@ -140,47 +76,27 @@ function App() {
     const reservationWithUser = {
       ...newReservation,
       userId: user ? user.username : 'guest',
-      accepted: user?.role === 'admin' ? true : false,
+      accepted: user?.role === 'admin',
       id: Date.now().toString()
     };
-
-    const updatedReservations = [...reservations, reservationWithUser];
-    setReservations(updatedReservations);
-    localStorage.setItem('allReservations', JSON.stringify(updatedReservations));
+    setReservations(prev => [...prev, reservationWithUser]);
     return reservationWithUser;
   };
 
   const modifyReservation = (updatedReservation) => {
-    const updatedReservations = reservations.map(reservation =>
-      reservation.id === updatedReservation.id ? updatedReservation : reservation
-    );
-    setReservations(updatedReservations);
-    localStorage.setItem('allReservations', JSON.stringify(updatedReservations));
+    setReservations(prev => prev.map(r => r.id === updatedReservation.id ? updatedReservation : r));
   };
 
   const deleteReservation = (id) => {
-    const updatedReservations = reservations.filter(reservation => reservation.id !== id);
-    setReservations(updatedReservations);
-    localStorage.setItem('allReservations', JSON.stringify(updatedReservations));
+    setReservations(prev => prev.filter(r => r.id !== id));
   };
 
   const acceptReservation = (id) => {
-    const updatedReservations = reservations.map(reservation =>
-      reservation.id === id ? { ...reservation, accepted: true } : reservation
-    );
-    setReservations(updatedReservations);
-    localStorage.setItem('allReservations', JSON.stringify(updatedReservations));
+    setReservations(prev => prev.map(r => r.id === id ? { ...r, accepted: true } : r));
   };
 
   const handleLogin = (userData) => {
-    const completeUserData = {
-      id: userData.id,
-      username: userData.username,
-      name: userData.name,
-      email: userData.email,
-      phone: userData.phone,
-      role: userData.role
-    };
+    const completeUserData = { id: userData.id, username: userData.username, name: userData.name, email: userData.email, phone: userData.phone, role: userData.role };
     setUser(completeUserData);
     localStorage.setItem('user', JSON.stringify(completeUserData));
   };
@@ -191,24 +107,27 @@ function App() {
   };
 
   return (
-    <div className="relative min-h-screen text-slate-800 dark:text-slate-100 font-sans selection:bg-emerald-500/30">
-      {/* Dynamic Mesh Gradient Background */}
-      <div className="fixed inset-0 z-[-2] bg-slate-100 dark:bg-[#0a0a0a] overflow-hidden">
-        {/* Animated Orbs */}
-        <div className="absolute -top-[20%] -left-[10%] w-[70vw] h-[70vw] rounded-full bg-emerald-400/30 dark:bg-emerald-600/20 blur-[120px] mix-blend-multiply dark:mix-blend-normal animate-pulse" style={{ animationDuration: '8s' }}></div>
-        <div className="absolute top-[20%] -right-[20%] w-[60vw] h-[60vw] rounded-full bg-teal-300/40 dark:bg-teal-600/20 blur-[120px] mix-blend-multiply dark:mix-blend-normal animate-pulse" style={{ animationDuration: '12s' }}></div>
-        <div className="absolute -bottom-[20%] left-[10%] w-[80vw] h-[80vw] rounded-full bg-cyan-200/40 dark:bg-cyan-600/20 blur-[120px] mix-blend-multiply dark:mix-blend-normal animate-pulse" style={{ animationDuration: '10s' }}></div>
-        
-        {/* Frosted Glass Overlay */}
-        <div className="absolute inset-0 bg-white/30 dark:bg-black/40 backdrop-blur-[60px] pointer-events-none"></div>
-        
-        {/* Subtle Grid Texture */}
-        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at center, #000 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+    <div className="relative min-h-screen text-white font-sans selection:bg-white/20">
+      {/* Page Loader */}
+      <div className={`page-loader ${!loading ? 'is-hidden' : ''}`}>
+        <div className="page-loader__columns">
+          <div className="page-loader__col page-loader__col--1" />
+          <div className="page-loader__col page-loader__col--2" />
+          <div className="page-loader__col page-loader__col--3" />
+          <div className="page-loader__col page-loader__col--4" />
+        </div>
+        <div className="page-loader__inner">
+          <span className="page-loader__logo">GOALTIME</span>
+        </div>
       </div>
 
-      <Header user={user} logout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
-      
-      <main className="relative z-10 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pt-24 pb-12">
+      {/* Background */}
+      <div className="fixed inset-0 z-[-3] bg-cover bg-center bg-no-repeat bg-fixed" style={{ backgroundImage: "url('/imagebg.jpg')" }} />
+      <div className="fixed inset-0 z-[-2] bg-black/70" />
+
+      <Header user={user} logout={handleLogout} isDarkMode={isDarkMode} />
+
+      <main className="relative z-10 min-h-screen pt-24">
         <Routes>
           <Route path="/" element={<Navigate to="/accueil" />} />
           <Route path="accueil" element={<Accueil user={user} />} />
@@ -216,12 +135,27 @@ function App() {
           <Route path="terrain/:id" element={<TerrainDetail user={user} addReservation={addReservation} reservations={reservations} terrains={terrains} />} />
           <Route path="reservation" element={<Reservation user={user} reservations={reservations} deleteReservation={deleteReservation} modifyReservation={modifyReservation} acceptReservation={acceptReservation} />} />
           <Route path="contact" element={<Contact user={user} />} />
-          <Route path="tournoi" element={<Tournoi user={user} tournois={tournois} setTournois={setTournois} />} />
-          <Route path="tournoi/:id" element={<TournoiDetail user={user} />} />
           <Route path="login" element={<Login setUser={handleLogin} />} />
+          <Route path="auth/google/callback" element={<GoogleCallback setUser={handleLogin} />} />
           <Route path="parametres" element={user ? <Parametres user={user} setUser={setUser} /> : <Navigate to="/login" />} />
+          <Route path="annonces" element={<MatchAnnonce user={user} />} />
+          <Route path="annonces/creer" element={<CreateAnnonce user={user} />} />
+          <Route path="annonces/mes" element={<CaptainDashboard user={user} />} />
+          <Route path="annonces/:id" element={<AnnonceDetail user={user} />} />
+          <Route path="profil/:userId" element={<PublicProfile />} />
+          <Route path="tournoi-smart" element={<TournamentPublicPage user={user} />} />
+          <Route path="tournoi-smart/:id" element={<TournamentPublicPage user={user} />} />
+          <Route path="tournoi-smart/:id/admin" element={user ? <TournamentDashboard user={user} /> : <Navigate to="/login" />} />
+          <Route path="tournoi-smart/creer" element={user ? <TournamentWizard user={user} onClose={() => window.history.back()} onCreated={(t) => window.location.href = `/tournoi-smart/${t.id}/admin`} /> : <Navigate to="/login" />} />
         </Routes>
       </main>
+
+      {/* Sticky CTA */}
+      <Link to={user ? '/terrain' : '/login'} className="sticky-cta">
+        <img src="/logo.jpg" alt="" className="w-4 h-4 rounded-sm object-cover" /> <span>{user ? 'Réserver' : 'Se connecter'}</span>
+      </Link>
+
+      <Footer />
     </div>
   );
 }

@@ -76,13 +76,31 @@ class TerrainController extends Controller
             $terrain = Terrain::create($data);
             Log::info('Terrain créé:', ['terrain' => $terrain]);
 
-            return response()->json($terrain, 201);
+            return response()->json(['success' => true, 'terrain' => $terrain], 201);
         } catch (\Exception $e) {
             Log::error('Erreur lors de la création du terrain:', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
             return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function show($id)
+    {
+        try {
+            $terrain = Terrain::findOrFail($id);
+            if ($terrain->image) {
+                if (filter_var($terrain->image, FILTER_VALIDATE_URL) &&
+                    !str_contains($terrain->image, '127.0.0.1:8000') &&
+                    !str_contains($terrain->image, 'localhost:8000')) {
+                    return response()->json($terrain);
+                }
+                $terrain->image = $this->formatImageUrl($terrain->image);
+            }
+            return response()->json($terrain);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Terrain non trouvé'], 404);
         }
     }
 

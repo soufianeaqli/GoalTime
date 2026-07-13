@@ -19,6 +19,11 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+use App\Http\Controllers\AuthController;
+
+Route::get('/auth/google/redirect', [AuthController::class, 'googleRedirect']);
+Route::get('/auth/google/callback', [AuthController::class, 'googleCallback']);
+
 // Routes spéciales complètement sans protection CSRF (doit être avant le middleware web)
 Route::group(['prefix' => 'api', 'middleware' => ['api']], function () {
     Route::get('/no-csrf/delete-terrain/{id}', [NoCSRFController::class, 'deleteTerrain']);

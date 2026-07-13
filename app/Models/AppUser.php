@@ -31,6 +31,9 @@ class AppUser extends Authenticatable
         'phone',
         'password',
         'role',
+        'position',
+        'city',
+        'skill_level',
     ];
 
     /**
